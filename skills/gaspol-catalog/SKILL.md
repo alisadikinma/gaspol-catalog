@@ -19,7 +19,10 @@ plugin — use `gaspol-pitch`, which shares this one's review engine and nothing
 
 ## Routing
 
-The pipeline is **interview → storyline → deck → gate → visual**, in that order.
+The pipeline is **interview → storyline → deck → gate → visual → gate → finish**, in
+that order. It is a loop, not a line: `catalog-finish` writes what was learned back
+into the same knowledge base `catalog-brainstorm` reads from, so each deal starts
+further along than the last.
 
 | Situation | Skill |
 |---|---|
@@ -30,17 +33,20 @@ The pipeline is **interview → storyline → deck → gate → visual**, in tha
 | A deck exists and is about to be sent, shown, or handed over | `catalog-gate` |
 | `catalog-gate` layer one returned PASS | `catalog-visual` |
 | Images exist and need checking | `catalog-gate` again, for layer two |
+| Both layers PASSED and it is time to send | `catalog-finish` |
 | Prices or product facts changed | `catalog-brainstorm` product mode again, then `catalog-master`, then re-gate every variant that quoted them |
 
 `catalog-brainstorm` runs **before every deck**, in one of two modes.
 `catalog-master` runs **once per product**. `catalog-variant` runs **once per
 prospect** and is cheap on purpose. `catalog-visual` runs **only after layer one
 passes**. `catalog-gate` runs **every time**, and it runs twice on any deck that gets
-rendered — once for the text, once for the images.
+rendered — once for the text, once for the images. `catalog-finish` runs **last**, and
+is the only skill that writes anything back.
 
 `catalog-brainstorm` reads the user's own knowledge base first — if one exists on the
-machine — and interviews only what it could not answer, then offers to write the
-confirmed answers back. The plugin ships the instruction to look, never an address:
+machine — and interviews only what it could not answer. `catalog-finish` closes the
+loop at the other end, writing back the corrections, the objection the buyer actually
+voiced, and what shipped. The plugin ships the instruction to look, never an address:
 no path, vault name, or company name is committed. With no knowledge base found it
 asks everything, which is the correct first-time run, not a degraded one.
 

@@ -5,7 +5,8 @@ management of an operating company, not an investor.
 
 Pipeline: **interview → storyline → deck → gate → visual.**
 
-Five skills:
+Six skills, and it is a **loop, not a line** — what the last deal learned shortens the
+next one:
 
 - **`catalog-brainstorm`** — runs first, always. Looks for your own knowledge base
   (Obsidian vault, notes folder, wiki) **before** asking anything, fills what it finds
@@ -29,6 +30,10 @@ Five skills:
   with the render guards baked in, logo and chapter rail left as paste-after-render
   slots, then hands the PNGs back for layer two. Image MCP optional — the prompts are
   the deliverable.
+- **`catalog-finish`** — gates on both layers, bundles the deliverable, then writes
+  back into the same knowledge base the brainstorm read from: the corrections that
+  surfaced, what the gate caught, and the objection the buyer actually voiced in their
+  own words. The deal outcome is left as an open question, never invented at ship time.
 
 Requires `gaspol-pitch` for the review engine, plus 19 sales and strategy skills.
 Run `bash tests/deps-present.sh` to check.

@@ -167,7 +167,8 @@ genuinely apply · any render-layer defect.
 
 On BLOCKING, route back with the exact fix list and re-review — text defects to
 `catalog-variant` / `catalog-master`, render defects to `catalog-visual`. Only
-**PASS** releases anything to a prospect.
+**PASS** releases anything to a prospect, and the release itself is
+`catalog-finish`'s job, not this skill's.
 
 **Do not soften a verdict to be polite.** That defeats the plugin. And the stakes are
 higher here than on a single investor deck: one catalog goes to dozens of companies,

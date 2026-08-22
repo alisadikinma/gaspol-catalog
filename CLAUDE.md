@@ -24,6 +24,7 @@ knowledge lives in `references/b2b/`, **never hardcoded in skill prose**.
 | `catalog-variant` | spin-selling, challenger-sale, meddic-scorecard, made-to-stick, storybrand | `b2b-deck-architecture.md`, `b2b-honesty-rails.md` |
 | `catalog-gate` | `pitch-review` (gaspol-pitch), with `rubric` pointed here | `b2b-deck-rubric.md`, `b2b-buyer-rubric.md`, `b2b-visual-contract.md`, `b2b-honesty-rails.md` |
 | `catalog-visual` | carousel-gen *(optional)*, gaspol-design *(optional)* | `b2b-visual-contract.md`, `b2b-deck-architecture.md` |
+| `catalog-finish` | a notes/knowledge MCP *(optional, runtime)*, gaspol-knowledge *(optional)* | `b2b-deck-architecture.md`, `b2b-honesty-rails.md` |
 
 If a **required** installed skill above is missing at runtime, STOP and tell the
 user — do NOT stub it or fabricate a replacement. Run
@@ -58,7 +59,10 @@ sources and is the input that grounds the rubric, not generic canon.
 
 ## Pipeline order (non-negotiable)
 
-**interview → storyline → deck → gate → visual.**
+**interview → storyline → deck → gate(text) → visual → gate(render) → finish.**
+
+It is a loop, not a line. `catalog-finish` is the only skill that writes back, and
+what it writes is what makes the next `catalog-brainstorm` shorter.
 
 `catalog-brainstorm` runs first, in `product` mode once per product or `prospect`
 mode once per deal, and emits `brief.md` + `storyline.md`. `catalog-master` and
@@ -80,8 +84,14 @@ pipeline.
 
 `catalog-brainstorm` Step 0 looks for the user's own knowledge base — an Obsidian
 vault, a notes folder, a wiki — **before** asking a single interview question, then
-asks only what it could not answer. Offering to write the confirmed facts back is what
-makes the next run shorter; a read-only integration never compounds.
+asks only what it could not answer. `catalog-finish` closes the loop, writing back
+corrections, the objection the buyer actually voiced, and what shipped. A read-only
+integration never compounds; that write-back is the whole reason the second run is
+shorter than the first.
+
+`catalog-finish` resolves the knowledge base **through the same Step 0 order** rather
+than its own. Two resolution paths drift, and a capture written somewhere the next
+brainstorm does not read is a capture that never happened.
 
 The split that keeps this publishable:
 
