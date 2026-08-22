@@ -19,4 +19,15 @@ Run `bash tests/deps-present.sh` to check.
 
 See `CLAUDE.md` for the rules and `references/b2b/` for the brain.
 
+## Install
+
+```bash
+claude plugin marketplace add alisadikinma/gaspol-one
+claude plugin install gaspol-catalog@gaspol-one
+claude plugin install gaspol-pitch@gaspol-one   # required: the review engine
+```
+
+The [gaspol-one](https://github.com/alisadikinma/gaspol-one) marketplace also carries
+`gaspol-dev` (execution fidelity).
+
 MIT.
