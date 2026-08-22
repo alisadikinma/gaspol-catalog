@@ -29,7 +29,7 @@ wajah manusia. Slot logo klien dikosongkan, ditempel setelah render.*
 
 ---
 
-## Dua puluh tiga persen order tidak bisa dijawab posisinya saat pelanggan menelepon
+## 23% order tidak bisa dijawab posisinya saat pelanggan menelepon
 
 Dari rekap operasi Anda periode Januari sampai Juni: 412 dari 1.790 order tidak
 punya catatan posisi antara berangkat dan tiba.
@@ -108,6 +108,12 @@ Anda boleh berhenti tanpa tagihan kalau kriterianya tidak terpenuhi.
 
 **Di luar lingkup:** proyeksi penghematan rupiah, integrasi sistem akuntansi Anda,
 dan pengadaan perangkat keras di luar daftar Slide 9.
+
+**Kalau suatu hari Anda berhenti memakai kami:** data operasi milik Anda, bukan kami.
+Ekspor penuh tersedia kapan saja dalam format terbuka, tanpa biaya dan tanpa perlu
+meminta. Waktu tanggap gangguan 4 jam pada jam kerja. Peta dan pesan memakai dua
+penyedia yang bisa saling menggantikan, sehingga satu pemasok berhenti bukan berarti
+sistemnya berhenti.
 
 ---
 
