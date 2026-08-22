@@ -23,5 +23,6 @@ for f in skills/*/SKILL.md; do
 done
 
 [ "$found" -eq 0 ] && { echo "frontmatter: nol SKILL.md ditemukan"; exit 1; }
+[ "$found" -ge 3 ] || { echo "EXPECT >=3 skill, ada $found"; fail=1; }
 [ "$fail" -eq 0 ] && echo "frontmatter OK — $found skill"
 exit "$fail"
