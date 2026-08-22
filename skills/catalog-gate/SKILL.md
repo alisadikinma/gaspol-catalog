@@ -97,8 +97,9 @@ quietly extended, no later deadline is ever believed again.
 blocked on layer two the same day: the text was right and the render prompt was
 wrong, so no amount of text review could have caught it.
 
-Runs only once images exist. For every image, compare it against its source text,
-line by line, using `b2b-visual-contract.md`:
+Runs only once images exist — produced by `catalog-visual`, which authors the prompts
+after layer one passes. For every image, compare it against its source text, line by
+line, using `b2b-visual-contract.md`:
 
 - [ ] **Duplicated text** — a block printed twice, a label rendered both inside and
       outside its container
@@ -118,6 +119,11 @@ line by line, using `b2b-visual-contract.md`:
 **Without images, layer two reports `NOT RUN`. Never `PASS`.** An unrun check is not
 a passed check, and reporting it as one is the exact failure this layer exists to
 prevent.
+
+On a render defect, route back to **`catalog-visual`** to fix the **prompt** and
+regenerate that slide. Never resolve a render defect by editing `deck.md` to match
+what the image drew — that rewrites a deck which already passed layer one, to fit a
+mistake.
 
 ---
 
@@ -159,8 +165,9 @@ dimension = 1 · an unreconciled number · 0 running-operation claims · maturit
 between platform and module · an honesty rail hit · an urgency device that does not
 genuinely apply · any render-layer defect.
 
-On BLOCKING, route back with the exact fix list and re-review. Only **PASS** releases
-anything to a prospect.
+On BLOCKING, route back with the exact fix list and re-review — text defects to
+`catalog-variant` / `catalog-master`, render defects to `catalog-visual`. Only
+**PASS** releases anything to a prospect.
 
 **Do not soften a verdict to be polite.** That defeats the plugin. And the stakes are
 higher here than on a single investor deck: one catalog goes to dozens of companies,

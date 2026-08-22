@@ -12,6 +12,8 @@ description: Second phase of gaspol-catalog, run once per prospect. Use to turn 
 
 ## Input
 
+- `prospects/<slug>/brief.md` and `prospects/<slug>/storyline.md` from
+  `catalog-brainstorm` (prospect mode) — **required, see the entry gate below**
 - Prospect: legal name, territory, size of operation
 - **Prospect documents** — operations recap, rate card, tender document, fleet list,
   anything they produced themselves
@@ -35,6 +37,14 @@ description: Second phase of gaspol-catalog, run once per prospect. Use to turn 
 | `storybrand` | keeping the prospect the hero and the product the guide |
 
 If a required skill is missing, STOP. Run `bash tests/deps-present.sh`.
+
+## ENTRY GATE — no brief, no draft
+
+If `prospects/<slug>/brief.md` or `storyline.md` is absent, **STOP and run
+`catalog-brainstorm` in prospect mode first.** Prospect mode is short by design — it
+inherits every product answer and asks only what changes per company — so this costs
+minutes, and skipping it produces a deck aimed at the segment rather than at the
+company.
 
 ## Procedure
 
@@ -84,7 +94,9 @@ prospect currently believe about this cost that the findings contradict?
 
 ### 5. Build the deck
 
-10–16 slides on the eight-act spine. Cover carries duration and deadline, never price.
+10–16 slides, **in the assertion order fixed in `storyline.md`**, on the eight-act
+spine. An assertion still marked `GAP` is not drafted — it returns to
+`catalog-brainstorm` for an answer. Cover carries duration and deadline, never price.
 The impact slide carries no currency and no percentage. The closing echoes the cover
 with only its last clause changed, and carries one instruction.
 
@@ -116,6 +128,8 @@ BLOCKING, apply the fix list and re-submit.
 
 ```
 prospects/<slug>/
+  brief.md              from catalog-brainstorm (prospect mode)
+  storyline.md          from catalog-brainstorm (prospect mode)
   qualification.md      MEDDIC scorecard + go / no-go with reason
   findings.md           each finding, its source document, its unit
   deck.md               10–16 slides, eight-act spine
@@ -124,6 +138,8 @@ prospects/<slug>/
 
 ## Hard rules
 
+0. `catalog-brainstorm` prospect mode runs before this skill. No `brief.md` +
+   `storyline.md`, no deck.
 1. Qualification runs before the first slide, and its result is reported either way.
 2. No prospect document, no deck. Stop and ask.
 3. Findings are the prospect's numbers, sourced and carried as questions.

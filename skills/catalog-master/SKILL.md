@@ -12,10 +12,22 @@ description: First phase of gaspol-catalog, run once per product. Use to build t
 
 ## Input
 
+- `catalog/brief.md` and `catalog/storyline.md` from `catalog-brainstorm`
+  (product mode) — **required, see the entry gate below**
 - Product capability inventory (what the system actually does today)
 - The reference customer's public content contract
 - `../../research/buyer-brain.md`
 - Module list and prices — **from a human, see the stop gates below**
+
+## ENTRY GATE — no brief, no draft
+
+If `catalog/brief.md` or `catalog/storyline.md` is absent, **STOP and run
+`catalog-brainstorm` in product mode first.** Do not reconstruct the interview from
+the capability inventory: an inventory says what the system does, and a catalog has
+to say what the buyer loses by not having it. Only the interview carries that.
+
+If the brief exists but its GAP list still contains any of the three stop gates below,
+that is the same stop — resolve it as an interview answer, not as a draft assumption.
 
 ## Load (the brain)
 
@@ -86,7 +98,11 @@ If so, the reference stays anonymous for that prospect regardless of permission.
 3. **Build the offer** — call `100m-offers` and `pricing-strategy`. Configure the
    à-la-carte menu. It **must** contain one line that cannot be removed; without it
    buyers assemble a package that cannot function and then blame the system.
-4. **Write the master catalog**, 12–16 slides, following the eight-act spine. The
+4. **Write the master catalog**, 12–16 slides, **following the assertion order in
+   `storyline.md`** rather than inventing a new one — that order was fixed against
+   the interview and reordering it here silently discards what the interview
+   established. Any assertion still marked `GAP` is not drafted; it goes back to
+   `catalog-brainstorm` for an answer. The spine is the eight-act one. The
    ISSUES act here is generic-by-segment rather than prospect-specific, because this
    artifact goes out before any prospect's documents exist. Cover carries duration and
    deadline, never price.
@@ -118,6 +134,8 @@ catalog/
 
 ## Hard rules
 
+0. `catalog-brainstorm` runs before this skill. No `brief.md` + `storyline.md`, no
+   draft — and the storyline's order is followed, not improvised.
 1. `catalog-gate` is never skipped. A PASS verdict is what releases this to a
    marketing team.
 2. Cover carries no price.

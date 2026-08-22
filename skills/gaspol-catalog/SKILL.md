@@ -9,7 +9,7 @@ description: Orchestrate B2B sales catalog and offer-deck creation end to end fo
 > one that has not survived both review layers.
 
 **Announce at start:**
-> "I'm using gaspol-catalog. It runs master catalog once, per-prospect variant per company, and a two-layer gate — text and render — that both block. Nothing reaches a prospect without a PASS."
+> "I'm using gaspol-catalog. It interviews first, fixes the storyline, then runs master catalog once, per-prospect variant per company, and a two-layer gate — text and render — that both block. Nothing reaches a prospect without a PASS."
 
 ## The audience, stated once
 
@@ -19,15 +19,33 @@ plugin — use `gaspol-pitch`, which shares this one's review engine and nothing
 
 ## Routing
 
+The pipeline is **interview → storyline → deck → gate → visual**, in that order.
+
 | Situation | Skill |
 |---|---|
-| No master catalog exists yet for this product | `catalog-master` |
-| Master catalog exists, a named prospect appeared | `catalog-variant` |
-| Anything is about to be sent, shown, or handed over | `catalog-gate` |
-| Prices or product facts changed | `catalog-master` again, then re-gate every variant that quoted them |
+| Anything at all is starting — no brief exists yet | `catalog-brainstorm` (product mode) |
+| A named prospect appeared and `catalog/brief.md` exists | `catalog-brainstorm` (prospect mode) |
+| `brief.md` + `storyline.md` exist, no master catalog yet | `catalog-master` |
+| A prospect's `brief.md` + `storyline.md` exist | `catalog-variant` |
+| A deck exists and is about to be sent, shown, or handed over | `catalog-gate` |
+| `catalog-gate` layer one returned PASS | `catalog-visual` |
+| Images exist and need checking | `catalog-gate` again, for layer two |
+| Prices or product facts changed | `catalog-brainstorm` product mode again, then `catalog-master`, then re-gate every variant that quoted them |
 
+`catalog-brainstorm` runs **before every deck**, in one of two modes.
 `catalog-master` runs **once per product**. `catalog-variant` runs **once per
-prospect** and is cheap on purpose. `catalog-gate` runs **every time**.
+prospect** and is cheap on purpose. `catalog-visual` runs **only after layer one
+passes**. `catalog-gate` runs **every time**, and it runs twice on any deck that gets
+rendered — once for the text, once for the images.
+
+## Nothing is drafted before someone is asked
+
+`catalog-master` and `catalog-variant` **refuse to start** without `brief.md` and
+`storyline.md` from `catalog-brainstorm`. This is not ceremony: a catalog written
+before the interview invents the buyer's problem, and an invented problem survives
+every later review because nothing downstream has the facts to contradict it. The
+gate catches a wrong number; it cannot catch a right number answering a question
+nobody has.
 
 ## The gate is never skipped
 
@@ -37,7 +55,9 @@ prospect** and is cheap on purpose. `catalog-gate` runs **every time**.
   buyer rubric supplied through its `rubric` parameter.
 - **Layer two, render** — a separate phase that checks produced images against the
   deck text. A deck has passed layer one and blocked on layer two the same day; the
-  defect was in the render prompt, not in the deck.
+  defect was in the render prompt, not in the deck. The prompts it judges are written
+  by `catalog-visual`, which carries the guards that stop the known defects before
+  they are rendered.
 
 Without images, layer two reports `NOT RUN` — never `PASS`.
 
@@ -73,9 +93,11 @@ place.
 ## Three things this plugin stops and asks about
 
 It never invents: module prices; whether the product serves many customers from one
-deployment; what may be said publicly about a reference customer. Each is a stop gate
-in `catalog-master`, and fabricating any of the three breaks the honesty rails the
-whole rubric rests on.
+deployment; what may be said publicly about a reference customer. All three are
+**asked in `catalog-brainstorm`**, in writing, and each remains a stop gate in
+`catalog-master`. Asking early costs one interview question; being ambushed by the
+same gate mid-draft costs the draft. Fabricating any of the three breaks the honesty
+rails the whole rubric rests on.
 
 ## Tests
 

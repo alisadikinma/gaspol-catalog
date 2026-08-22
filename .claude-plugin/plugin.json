@@ -1,13 +1,13 @@
 {
   "name": "gaspol-catalog",
-  "description": "Orchestrates B2B sales catalog and offer-deck creation for operations buyers, not investors: master catalog once, per-prospect variant many times, and a two-layer blocking gate that reviews the text AND the rendered image. Inherits the adversarial review engine from gaspol-pitch and swaps the rubric.",
-  "version": "0.1.0",
+  "description": "Orchestrates B2B sales catalog and offer-deck creation for operations buyers, not investors: interview first, then storyline, then master catalog once, per-prospect variant many times, and a two-layer blocking gate that reviews the text AND the rendered image, plus a visual phase that authors the render prompts. Inherits the adversarial review engine from gaspol-pitch and swaps the rubric.",
+  "version": "0.3.0",
   "author": { "name": "Ali Sadikin", "url": "https://github.com/alisadikinma" },
   "homepage": "https://github.com/alisadikinma/gaspol-catalog",
   "repository": "https://github.com/alisadikinma/gaspol-catalog",
   "license": "MIT",
   "keywords": [
-    "sales-deck", "b2b-sales", "proposal", "catalog", "offer",
+    "sales-deck", "b2b-sales", "discovery-interview", "proposal", "catalog", "offer",
     "adversarial-review", "render-review", "claude-code"
   ]
 }

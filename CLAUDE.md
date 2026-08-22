@@ -19,9 +19,11 @@ knowledge lives in `references/b2b/`, **never hardcoded in skill prose**.
 
 | Skill | Reuses (installed skills) | Bundled references it reads |
 |---|---|---|
+| `catalog-brainstorm` | mom-test, spin-selling, never-split-difference, lean-startup, obviously-awesome | `b2b-deck-architecture.md`, `b2b-honesty-rails.md`, `b2b-phased-sale.md` |
 | `catalog-master` | positioning, pricing-strategy, monetizing-innovation, sales-narrative, crossing-the-chasm, 100m-offers | `b2b-deck-architecture.md`, `b2b-honesty-rails.md`, `enablement-kit.md`, `b2b-phased-sale.md` |
 | `catalog-variant` | spin-selling, challenger-sale, meddic-scorecard, made-to-stick, storybrand | `b2b-deck-architecture.md`, `b2b-honesty-rails.md` |
 | `catalog-gate` | `pitch-review` (gaspol-pitch), with `rubric` pointed here | `b2b-deck-rubric.md`, `b2b-buyer-rubric.md`, `b2b-visual-contract.md`, `b2b-honesty-rails.md` |
+| `catalog-visual` | carousel-gen *(optional)*, gaspol-design *(optional)* | `b2b-visual-contract.md`, `b2b-deck-architecture.md` |
 
 If a **required** installed skill above is missing at runtime, STOP and tell the
 user — do NOT stub it or fabricate a replacement. Run
@@ -30,6 +32,8 @@ user — do NOT stub it or fabricate a replacement. Run
 **Optional dependencies (graceful degrade, never hard-stop):**
 - `gaspol-design` (palette/font/chart) — if absent, fall back to the theming canon
   in `b2b-visual-contract.md`, which is self-sufficient.
+- `carousel-gen` (`ai-image-carousel-prompt-gen`) — prompt machinery for
+  `catalog-visual`; if absent, its five-section template stands on its own.
 - Image MCP — if absent, emit the render prompts and report the render layer as
   `NOT RUN`. Never report it as PASS.
 
@@ -52,6 +56,26 @@ user — do NOT stub it or fabricate a replacement. Run
 `research/buyer-brain.md` is NOT part of `references/` on purpose: it names real
 sources and is the input that grounds the rubric, not generic canon.
 
+## Pipeline order (non-negotiable)
+
+**interview → storyline → deck → gate → visual.**
+
+`catalog-brainstorm` runs first, in `product` mode once per product or `prospect`
+mode once per deal, and emits `brief.md` + `storyline.md`. `catalog-master` and
+`catalog-variant` have an **entry gate** and refuse to draft without both files.
+A catalog written before the interview invents the buyer's problem, and an invented
+problem survives every later review — the gate catches a wrong number, it cannot
+catch a right number answering a question nobody asked.
+
+`catalog-visual` runs **only after layer one PASSES**, authors one prompt per slide,
+and hands the PNGs back for layer two. Render prompts are authored from **drafted,
+gated** slides, never from a storyline still carrying `GAP` lines. Baking a gap into a
+PNG is how a deck passes on text and fails on render.
+
+A render defect is fixed in the **prompt**, never by editing `deck.md` to match what
+the image drew — that rewrites a passed deck to fit a mistake and inverts the whole
+pipeline.
+
 ## Hard rules (gotchas)
 
 1. **Never skip `catalog-gate`.** Nothing reaches a prospect without a PASS verdict.
@@ -65,16 +89,19 @@ sources and is the input that grounds the rubric, not generic canon.
 3. **Brand chrome is a runtime input.** Logo, palette, font, handle — leave a
    placeholder. The client's logo is never drawn by an image model; leave the slot
    empty in the prompt and paste the file after rendering.
-4. **Render policy = full-slide image + QA safety net.** Bake the exact headline and
-   numbers into each prompt verbatim; if rendered, run the render layer of
-   `catalog-gate` and regenerate on defect.
+4. **Render policy = full-slide image + QA safety net.** `catalog-visual` bakes the
+   exact headline and numbers into each prompt verbatim and carries the four render
+   guards; if rendered, the render layer of `catalog-gate` runs and defects go back to
+   the prompt. Logo, chapter rail, and PDF watermark are **composited after render,
+   never generated**.
 5. **Image MCP is optional.** Always emit the prompts; PNG generation is a separable
    step. No MCP is a manual-run note, not a failure.
 6. **SKILL.md frontmatter = `name` + `description` only.** No other YAML keys.
    Enforced by `bash tests/frontmatter.sh`.
 7. **Three things this plugin must never invent** — it STOPS and asks instead:
    module list and prices; a prospect's fleet size or operating numbers; whether the
-   product supports multiple tenants in one deployment. Fabricating any of the three
+   product supports multiple tenants in one deployment. All three are asked up front
+   in `catalog-brainstorm` and remain stop gates in `catalog-master`. Fabricating any of the three
    breaks the honesty rails the whole rubric rests on.
 
 ## Skill format
