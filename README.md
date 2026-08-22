@@ -7,10 +7,16 @@ Pipeline: **interview → storyline → deck → gate → visual.**
 
 Five skills:
 
-- **`catalog-brainstorm`** — runs first, always. Interviews the human (product mode
-  once per product, prospect mode once per deal), pressure-tests the pain, resolves
-  the three things the plugin must never invent, and fixes the storyline spine the
-  deck follows. `catalog-master` and `catalog-variant` refuse to draft without it.
+- **`catalog-brainstorm`** — runs first, always. Looks for your own knowledge base
+  (Obsidian vault, notes folder, wiki) **before** asking anything, fills what it finds
+  with provenance attached, then interviews only the gaps — and offers to write the
+  answers back, so the next deal asks fewer questions than this one. No knowledge base
+  on the machine? It asks everything, exactly as a first-time run should. Pressure-tests
+  the pain, resolves the three things the plugin must never invent, and fixes the
+  storyline spine. `catalog-master` and `catalog-variant` refuse to draft without it.
+
+  The plugin ships the instruction to look, never an address: no path, vault name, or
+  company name is committed, and `tests/guard-generic.sh` fails the build if one is.
 - **`catalog-master`** — run once per product. Capability catalog, à-la-carte module
   menu, five-part enablement kit, one-pager, contact scripts, ROI calculator spec.
 - **`catalog-variant`** — run per prospect. Qualifies the deal first, mines findings

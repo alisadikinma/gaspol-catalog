@@ -38,6 +38,12 @@ prospect** and is cheap on purpose. `catalog-visual` runs **only after layer one
 passes**. `catalog-gate` runs **every time**, and it runs twice on any deck that gets
 rendered — once for the text, once for the images.
 
+`catalog-brainstorm` reads the user's own knowledge base first — if one exists on the
+machine — and interviews only what it could not answer, then offers to write the
+confirmed answers back. The plugin ships the instruction to look, never an address:
+no path, vault name, or company name is committed. With no knowledge base found it
+asks everything, which is the correct first-time run, not a degraded one.
+
 ## Nothing is drafted before someone is asked
 
 `catalog-master` and `catalog-variant` **refuse to start** without `brief.md` and
