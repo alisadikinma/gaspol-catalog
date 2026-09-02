@@ -17,6 +17,8 @@ yang bisa menangkapnya:
   6  wajah manusia di slide             lapis (g) kontrak visual
   7  kematangan modul disamakan platform lapis (h) pagar kejujuran
   8  tenggat yang tidak berlaku         lapis (i) keabsahan urgensi
+  9  cover label, nol hook, nol momen   lapis (b) arsitektur deck
+ 10  babak PRODUK kosong sama sekali    lapis (b) arsitektur deck
 
 Menghapus salah satu cacat membuat kontrak uji jadi bohong tanpa ada yang tahu.
 -->

@@ -21,10 +21,16 @@ user brings), plus any rendered PNGs if they exist.
 - `../../references/b2b/b2b-deck-rubric.md` — 9 binary checks per slide.
 - `../../references/b2b/b2b-buyer-rubric.md` — scored buyer dimensions (/50), dual
   test, four conviction layers, consistency, proof-of-operation gate, narrative gates.
-- `../../references/b2b/b2b-deck-architecture.md` — the eight-act spine.
+- `../../references/b2b/b2b-deck-architecture.md` — the six-act spine
+  (**COVER → MASALAH → SOLUSI → PRODUK → HARGA → PENUTUP**), the three optional inserts and
+  their fixed slots, the cover hook test, and what the closing slide must carry.
 - `../../references/b2b/b2b-honesty-rails.md` — honesty rails, anchor arithmetic,
   urgency-kit validity.
-- `../../references/b2b/b2b-visual-contract.md` — the render layer's guards.
+- `../../references/b2b/b2b-visual-contract.md` — the render layer's guards A–Q, and
+  the DEFAULT-vs-KANON split that says which of them a house standard may override.
+- `../../references/b2b/b2b-brand-intake.md` + the run's `brand.md` — what this deck
+  was supposed to look like. Without it the render layer can only check correctness,
+  never craft, and a deck can be entirely correct and still unsendable.
 - `../../research/buyer-brain.md` — `## Keberatan` feeds the skeptic; `## Anti-pola`
   feeds the sweep.
 
@@ -101,20 +107,71 @@ Runs only once images exist — produced by `catalog-visual`, which authors the 
 after layer one passes. For every image, compare it against its source text, line by
 line, using `b2b-visual-contract.md`:
 
+**Correctness — twenty checks, each one a defect that actually shipped:**
+
 - [ ] **Duplicated text** — a block printed twice, a label rendered both inside and
       outside its container
 - [ ] **Fabricated numbers** — any figure on the canvas that is not in the deck text
-- [ ] **Language leak** — a second language appearing unasked
+- [ ] **Language leak** — a second language appearing unasked, or a slide translated
+      wholesale out of the deck's language
 - [ ] **Missing headline** — a "no other text" instruction having deleted the headline
       that was supposed to print
 - [ ] **Truncated qualifier** — a hedge or source note cut in half
-- [ ] **Dropped disclaimer** — an illustration stamp or confidentiality line lost when
+- [ ] **Dropped disclaimer** — an `ILUSTRASI` stamp or confidentiality line lost when
       the prompt was upgraded
-- [ ] **Logo failure** — a client wordmark drawn by the model instead of pasted, or a
-      lockup colliding with the headline
-- [ ] **Human face** — any face on any slide
-- [ ] **Chapter rail** — generated instead of pasted, or present on a slide that
+- [ ] **Miscount** — a set of objects drawn to a quantity the deck states. The count is
+      wrong roughly every time; the defect is that it was asked for at all
+- [ ] **Layout word printed** — `HEADLINE`, `SUBTITLE`, `CAPTION`, `PRODUCT LOGO` or
+      any other role word rendered as visible text
+- [ ] **Icon description printed** — the sentence explaining what an icon means,
+      printed beside the icon as text
+- [ ] **Unlisted string** — any text on the canvas absent from that prompt's whitelist,
+      a strapline on the cover being the classic case
+- [ ] **Invented dashboard content** — city names, product names, or figures inside a
+      chart or fake screen that the deck never supplied, which the reader will read as
+      the prospect's own data
+- [ ] **Logo failure** — a wordmark drawn by the model instead of pasted, or a lockup
+      colliding with the headline. An in-scene logo is exempt only if it came from a
+      ref image
+- [ ] **Human face** — a face on a slide `brand.md` did not approve, or an approved
+      face that is visibly not the person in the reference portrait
+- [ ] **Chapter marker** — generated instead of pasted, or present on a slide that
       should have none
+- [ ] **Full-bleed** — a stray border where the visual should reach the first and last
+      pixel column
+- [ ] **Slot word printed** — the word `LOGO` (or any other slot name) rendered inside
+      the placeholder rectangle that was supposed to stay empty
+- [ ] **Stray brand mark** — a real manufacturer's logo the model attached on its own
+      to a laptop lid, phone, monitor, or package inside the scene
+- [ ] **Face on a prop** — a photo or portrait inside an object in the scene: an ID
+      card, a screen, a poster, a picture frame. The zero-face rule reaches into props
+- [ ] **Brand word doubled** — a company name printed twice around its own logo tile,
+      once as part of the mark and once again as text
+- [ ] **Spelling drift** — every whitelisted string re-read against the deck **letter
+      by letter**, not for presence. A dropped suffix on the last word of a long
+      sentence still looks correct at a glance and is the defect most often shipped
+
+**Craft — does it look like this company's deck?** Correctness is not sendability. A
+deck has been rejected outright by its own seller with every one of the checks above
+passing, because nobody had ever asked what the company's decks look like. Compare
+against `brand.md`:
+
+- [ ] **House standard followed** — marker shape and position, bottom band contents,
+      page-number position, visual medium, ground value
+- [ ] **Palette obeyed** — only the colours in `brand.md`, each doing its one job
+- [ ] **Consistent across slides** — a deck where slides disagree on ground, type
+      scale, or marker placement reads as assembled rather than designed
+- [ ] **Placeholders resolved** — no `[RUNTIME PLACEHOLDER]` survived into a prompt
+- [ ] **Frame identical on every page** — the six fixed slots of the chosen frame sit
+      in the same position on all slides, page numbers run in order with no repeats
+      and no gaps
+- [ ] **Every image has a prompt file** — `prompts/slide-NN.md` exists for each render
+      and carries its revision log. A PNG with no prompt file behind it cannot be fixed
+      without re-deriving the whole prompt, and re-derivation is where guard blocks die
+
+Any craft check failing is BLOCKING in the same way a correctness check is. Route it
+back to `catalog-visual`, and if the answer is that `brand.md` never had the value,
+back to `catalog-brainstorm` — never patch it by taste at render time.
 
 **Without images, layer two reports `NOT RUN`. Never `PASS`.** An unrun check is not
 a passed check, and reporting it as one is the exact failure this layer exists to
@@ -151,7 +208,7 @@ toughest question per slide · the 3 weakest claims
 rail hits · every urgency device: genuinely applies y/n
 
 ## Layer 2 — render
-| image | 9 render checks | defects (with the deck line it contradicts) |
+| image | 15 correctness checks · 4 craft checks | defects (with the deck line or brand.md rule it contradicts) |
 (or) NOT RUN — no images produced
 
 ## VERDICT: PASS | BLOCKING
@@ -161,7 +218,10 @@ rail hits · every urgency device: genuinely applies y/n
 ## Blocking verdict + gate loop
 
 Return **BLOCKING** if ANY of: a binary check fails · score < 34 · any single
-dimension = 1 · an unreconciled number · 0 running-operation claims · maturity blurred
+dimension = 1 · **any of the six acts missing or empty** · **an optional insert sitting
+outside its fixed slot** · **a cover that fails the four hook tests** · **a closing
+slide with no single command, or with the price cards repeated on it** · an
+unreconciled number · 0 running-operation claims · maturity blurred
 between platform and module · an honesty rail hit · an urgency device that does not
 genuinely apply · any render-layer defect.
 
@@ -186,9 +246,11 @@ so one unchecked claim travels dozens of times.
   | one slide carrying four ideas joined by "dan" | (a) One-Message |
   | price on the cover | (b) via the architecture reference |
   | slide 9 total disagreeing with slide 7 price | (d) consistency |
-  | a human face on a slide | Layer 2 / (g) visual contract |
+  | a human face on a slide that `brand.md` never approved | Layer 2 / (g) visual contract |
   | a new module claimed as proven at scale | (e) proof-of-operation |
   | a deadline that does not genuinely apply | (h) urgency validity |
+  | a cover that is a label, with no hook and no moment | (b) via the architecture reference |
+  | an empty PRODUK act — mechanism explained, product never shown | (b) via the architecture reference |
 
 - `../../references/b2b/examples/good-catalog.md` **MUST** return PASS.
 - **This skill is correct only if it BLOCKS the bad fixture and PASSES the good one.**

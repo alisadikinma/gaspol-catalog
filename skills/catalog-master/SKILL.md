@@ -31,10 +31,12 @@ that is the same stop — resolve it as an interview answer, not as a draft assu
 
 ## Load (the brain)
 
-- `../../references/b2b/b2b-deck-architecture.md` — the eight-act spine
+- `../../references/b2b/b2b-deck-architecture.md` — the six-act spine
+  (**COVER → MASALAH → SOLUSI → PRODUK → HARGA → PENUTUP**) and its three optional inserts
 - `../../references/b2b/b2b-honesty-rails.md` — rails, anchors, urgency kit, modular
   menu rules
-- `../../references/b2b/b2b-phased-sale.md` — Survey → pilot → rollout
+- `../../references/b2b/b2b-phased-sale.md` — the two deployment models; the one this
+  seller chose is recorded in `brand.md`, not assumed here
 - `../../references/b2b/enablement-kit.md` — the five-part output shape
 - `../../research/buyer-brain.md` — decision triggers, objections, buyer vocabulary,
   trusted evidence, procurement patterns, anti-patterns
@@ -94,7 +96,11 @@ If so, the reference stays anonymous for that prospect regardless of permission.
    are usually "how we do it now", not a named competitor.
 2. **Separate maturity into layers** — what runs in production today, what has been
    assembled once, what has never been built. This split drives every later claim and
-   is non-negotiable per `b2b-honesty-rails.md` rail 12.
+   is non-negotiable per `b2b-honesty-rails.md` rail 12. **The split is
+   non-negotiable; its presentation is not.** Rail 12 used to mandate a dedicated
+   confession slide and a real deck shipped with one, headlined on our own weakness,
+   until the seller deleted it. Default to a small maturity marker attached to the
+   module on the solution slide; `brand.md` records if the seller wants another form.
 3. **Build the offer** — call `100m-offers` and `pricing-strategy`. Configure the
    à-la-carte menu. It **must** contain one line that cannot be removed; without it
    buyers assemble a package that cannot function and then blame the system.
@@ -102,7 +108,7 @@ If so, the reference stays anonymous for that prospect regardless of permission.
    `storyline.md`** rather than inventing a new one — that order was fixed against
    the interview and reordering it here silently discards what the interview
    established. Any assertion still marked `GAP` is not drafted; it goes back to
-   `catalog-brainstorm` for an answer. The spine is the eight-act one. The
+   `catalog-brainstorm` for an answer. The spine is the six-act one. The
    ISSUES act here is generic-by-segment rather than prospect-specific, because this
    artifact goes out before any prospect's documents exist. Cover carries duration and
    deadline, never price.
@@ -123,7 +129,7 @@ If so, the reference stays anonymous for that prospect regardless of permission.
 ```
 catalog/
   context-brief.md
-  master-catalog.md          12–16 slides, eight-act spine
+  master-catalog.md          12–20 slides, six-act spine
   module-menu.md             à-la-carte + prices + the unremovable line
   talk-tracks.md
   one-pager.md

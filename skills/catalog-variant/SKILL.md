@@ -22,7 +22,8 @@ description: Second phase of gaspol-catalog, run once per prospect. Use to turn 
 
 ## Load (the brain)
 
-- `../../references/b2b/b2b-deck-architecture.md` — the eight-act spine
+- `../../references/b2b/b2b-deck-architecture.md` — the six-act spine
+  (**COVER → MASALAH → SOLUSI → PRODUK → HARGA → PENUTUP**) and its three optional inserts
 - `../../references/b2b/b2b-honesty-rails.md` — rails, anchors, urgency validity
 - `../../references/b2b/b2b-phased-sale.md` — the phased structure this deck sells
 
@@ -94,7 +95,7 @@ prospect currently believe about this cost that the findings contradict?
 
 ### 5. Build the deck
 
-10–16 slides, **in the assertion order fixed in `storyline.md`**, on the eight-act
+10–20 slides, **in the assertion order fixed in `storyline.md`**, on the six-act
 spine. An assertion still marked `GAP` is not drafted — it returns to
 `catalog-brainstorm` for an answer. Cover carries duration and deadline, never price.
 The impact slide carries no currency and no percentage. The closing echoes the cover
@@ -132,7 +133,7 @@ prospects/<slug>/
   storyline.md          from catalog-brainstorm (prospect mode)
   qualification.md      MEDDIC scorecard + go / no-go with reason
   findings.md           each finding, its source document, its unit
-  deck.md               10–16 slides, eight-act spine
+  deck.md               10–20 slides, six-act spine
   review.md             from catalog-gate
 ```
 

@@ -39,18 +39,49 @@ angka jatuh, seluruh angka lain ikut jatuh.**
 11. **Temuan yang bisa punya alasan sah dibawa sebagai PERTANYAAN, bukan tuduhan.**
     Menyebutnya pemborosan di depan orang yang merancang aturannya adalah cara
     tercepat kehilangan ruangan.
-12. **Pengakuan "bagian ini belum pernah kami bangun" wajib di BADAN SLIDE, bukan
-    catatan pembicara.** Bentuk yang terbukti: satu slide **dua lapis bukti** —
-    Lapis 1 *berjalan hari ini*, Lapis 2 *rakitan pertama untuk Anda*, dibangun di
-    atas Lapis 1 — lalu konversi jadi alasan kenapa pilot digerbangi kriteria terima
-    yang **prospek** yang menulis. Ini mengubah risiko terbesar deck jadi
-    kredibilitasnya.
-13. **Lawan dihadapi lewat UJIAN, bukan matriks centang-silang nilai-sendiri.**
+12. **Modul yang belum pernah dibangun tidak boleh diklaim sudah terbukti — dan itu
+    saja isi pagar ini.** Yang dilarang adalah klaimnya, bukan diamnya.
+
+    ⚠️ Versi lama pagar ini mewajibkan satu slide pengakuan tersendiri, dan itu salah.
+    Yang dihasilkannya: sebuah slide berjudul pengakuan bahwa sistem ini belum pernah
+    kami bangun, di tengah deck penawaran. Penjualnya menghapusnya dan menyebutnya
+    keputusan yang merusak diri sendiri. Ia benar. Kejujuran tidak menuntut kita
+    menulis kelemahan kita sebagai judul.
+
+    Bentuk yang benar: **pelabelan kematangan menempel di modulnya**, di badan slide
+    solusi tempat modul itu dijelaskan — satu penanda kecil yang membedakan *berjalan
+    di produksi* dari *dirakit untuk Anda*. Pembaca melihatnya persis di titik ia
+    menilai modulnya, dan tidak ada satu slide pun yang tugasnya menjual keraguan.
+
+    Bentuk mana yang dipakai — penanda menempel, satu slide dua lapis bukti, atau
+    lampiran terpisah — dicatat di `brand.md` sebagai keputusan penjual (lihat
+    `b2b-brand-intake.md`). Yang tidak pernah boleh: mengaburkan keduanya, atau
+    menjual modul rakitan pertama sebagai sesuatu yang sudah terbukti di banyak
+    tempat. Itu yang diperiksa lapis (e).
+13. **Lawan dihadapi lewat UJIAN atau lewat FAKTA — tidak pernah lewat matriks
+    centang-silang nilai-sendiri.**
     Matriks yang semua kolom kita centang terbaca sebagai sandiwara dan **menambah**
     risiko kredibilitas. Ganti dengan satu slide *"lima pertanyaan untuk ditanyakan ke
     setiap penawar"* — tiap pertanyaan harus (a) kita jawab dengan baik, (b) sulit
     bagi integrator katalog, (c) **bisa diverifikasi sendiri oleh komite**.
     Disampaikan murah hati ("tanyakan ini ke kami juga"), tanpa menyeringai.
+
+    **Yang TIDAK dilarang pagar ini: perbandingan berbasis fakta yang bisa diperiksa
+    sendiri oleh pembaca.** Satu slide yang menaruh berdampingan *hari kerja yang sama
+    di kedua sistem* — kapan datanya sampai, berapa lama menunggu, langkah manual apa
+    yang tersisa — bekerja justru karena tiap barisnya bisa dibantah prospek dari
+    pengalamannya sendiri. Itu bukan matriks nilai-sendiri; tidak ada kolom yang kita
+    beri centang. Bedanya: matriks menilai vendor, perbandingan fakta menggambarkan
+    hari kerja.
+
+    Syaratnya tiga: tiap baris fakta yang bisa diverifikasi prospek, nol superlatif,
+    dan nol rupiah penghematan (pagar #1 tetap berlaku).
+
+    **Menyebut nama vendor lama adalah keputusan penjual, bukan default plugin.**
+    Default tetap anonim — "sistem yang berjalan sekarang". Sebagian penjual justru
+    ingin menyebut namanya karena di situ letak seluruh argumennya, dan itu sah selama
+    yang disebut tentangnya adalah fakta teknis yang bisa diperiksa, bukan tuduhan.
+    Jawabannya diambil di `b2b-brand-intake.md` dan dicatat di `brand.md`.
 
 ## Batas pengungkapan pelanggan referensi
 
