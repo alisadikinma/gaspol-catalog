@@ -3,13 +3,14 @@ FIXTURE — SENGAJA BENAR. Dipakai `catalog-gate` sebagai kontrak uji-diri:
 berkas ini WAJIB menghasilkan verdict PASS.
 
 Perusahaan sama dengan `bad-catalog.md` (PT Contoh Angkutan Nusantara, fiktif),
-jumlah slide sama (10), supaya perbandingannya tentang mutu, bukan tentang ukuran.
+jumlah slide sama (12), supaya perbandingannya tentang mutu, bukan tentang ukuran.
 
 Yang dipenuhi berkas ini, dan lapis yang memeriksanya:
 
   headline asersi, bukan label                lapis (a)
   nol fluff, angka berformat, satu pesan      lapis (a)
-  cover tanpa rupiah, delapan babak utuh      lapis (b)
+  cover berhook fakta prospek, tanpa rupiah    lapis (b)
+  enam babak utuh, PRODUK tidak kosong        lapis (b)
   DAMPAK nol rupiah nol persen                lapis (b)
   penutup menggemakan cover, satu perintah    lapis (b)
   angka rekonsiliasi lintas-slide             lapis (d)
@@ -70,6 +71,35 @@ muncul dengan nama perjalanan, waktu, dan kendaraannya.
 
 Sistem menandai kekosongan data, tidak mengisinya. Pembacaan yang tidak bisa
 dipercaya muncul sebagai "perlu kalibrasi", bukan sebagai angka karangan.
+
+---
+
+## Petugas gerbang memindai satu kode, palang terbuka sendiri
+
+Aplikasi gerbang di tablet. Satu pemindaian pada surat jalan, kendaraan dan
+perjalanannya cocok otomatis, palang terbuka. Tidak ada yang mengetik nomor
+kendaraan, dan tidak ada buku gerbang yang harus diketik ulang malam harinya.
+
+Kalau kodenya tidak cocok, palang tidak terbuka dan alasannya muncul di layar —
+bukan sebagai kode kesalahan, sebagai kalimat.
+
+*Visual: layar tablet aplikasi gerbang, satu tombol pemindaian, satu baris status.
+Nol wajah manusia.*
+
+---
+
+## Kepala operasional membuka satu layar, bukan empat laporan
+
+Dasbor operasional di komputer kantor: posisi seluruh armada, perjalanan yang sedang
+berjalan, selisih bahan bakar yang perlu kalibrasi, dan bukti muat-bongkar hari ini.
+Tiap angka bisa diklik sampai ke kejadian yang menghasilkannya.
+
+Layar yang sama terbuka di ponsel dengan susunan yang sama, supaya tidak ada versi
+kedua dari kebenaran.
+
+*Visual: satu monitor kantor dengan dasbor, satu ponsel di sebelahnya menampilkan
+susunan yang sama. Label di dalam dasbor dikutip dari naskah, bukan dikarang model.
+Nol wajah manusia.*
 
 ---
 

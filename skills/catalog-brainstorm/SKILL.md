@@ -118,12 +118,18 @@ of quietly wrong.
   `## Keberatan` sets what to pre-empt, `## Bahasa pembeli` sets the words to ask in,
   `## Bukti yang dipercaya` sets what evidence to hunt, `## Pola pengadaan` sets the
   procurement questions, `## Anti-pola` sets what an answer must not become.
-- `../../references/b2b/b2b-deck-architecture.md` — the eight-act spine the storyline
-  is laid on.
+- `../../references/b2b/b2b-deck-architecture.md` — the six-act spine the storyline is
+  laid on: **COVER → MASALAH → SOLUSI → PRODUK → HARGA → PENUTUP**, plus the three
+  optional inserts (PERUSAHAAN, PERBANDINGAN, LINIMASA) and the slots they may occupy.
 - `../../references/b2b/b2b-honesty-rails.md` — an interview answer that would breach
   a rail is re-asked here, not laundered into a slide later.
-- `../../references/b2b/b2b-phased-sale.md` — Survey → pilot → rollout, which the
-  timeline questions assume.
+- `../../references/b2b/b2b-brand-intake.md` — the visual half of this interview. It
+  is loaded here and nowhere else, because by the time `catalog-visual` needs a
+  palette it is far too late to go and ask for one.
+- `../../references/b2b/b2b-phased-sale.md` — the two deployment models. The timeline
+  questions **assume neither**; they ask which one this seller wants, because the file
+  used to assume the phased one and a deck once asked a prospect for a single-site
+  pilot on an offer meant to go live everywhere at once.
 
 ## Reuse (installed skills — call, do not reimplement)
 
@@ -200,6 +206,33 @@ Inherits every product answer. Ask only what is specific to this company:
 - What is the real deadline on their side, and what happens if it slips?
 - What has a vendor already promised them and failed to deliver?
 
+## Brand intake — the visual half of the interview
+
+Run `b2b-brand-intake.md` in this phase and emit `brand.md` alongside `brief.md` and
+`storyline.md`. It is short — eight things to collect and four decisions to put to the
+human — and skipping it is the single most expensive omission this plugin has made.
+
+The failure it fixes was measured, not imagined. A 19-slide deck was drafted, reviewed,
+rendered, and finished with every palette, font, and layout value still an unfilled
+`[RUNTIME PLACEHOLDER]`. The image model supplied its own defaults for all of them and
+the seller rejected the whole deck on sight as generic AI output. Not one slide was
+wrong on the facts. **No phase had ever asked what the company's own decks look like.**
+
+Two things matter more than the rest:
+
+- **Ask for an existing deck, catalog, or company profile first.** If one exists, that
+  file is the visual specification — read it, take its layout system apart, and record
+  it. It outranks every default in `b2b-visual-contract.md`, and each collision gets
+  written down so it reads as a decision rather than a drift.
+- **Put the four visual and commercial decisions to the human** — human faces, naming
+  the incumbent vendor, the shape of the maturity admission, and pilot-versus-full
+  rollout. The plugin has decided all four on its own before, and had all four
+  rejected. They belong to the seller.
+
+Record `MISSING` rather than a guess, exactly as everywhere else in this phase. A
+guessed palette becomes a rendered deck in the seller's wrong colours, and by then it
+costs a full re-render to find out.
+
 ## The three stop gates — surfaced here, enforced downstream
 
 This plugin never invents: **module prices**, **the deployment model**, and **what
@@ -233,7 +266,7 @@ skill says so explicitly rather than handing over a brief that looks complete.
 
 ## Then, and only then — the storyline
 
-Lay the interview answers onto the eight-act spine from
+Lay the interview answers onto the six-act spine (**COVER → MASALAH → SOLUSI → PRODUK → HARGA → PENUTUP**) from
 `b2b-deck-architecture.md` as **ordered assertions, one line per slide**. An assertion
 is a sentence the buyer could disagree with — `Solusi` and `Manfaat` are topics, not
 assertions, and a storyline made of topics produces a deck of labels.
@@ -284,7 +317,8 @@ Product mode:
 ```
 catalog/
   brief.md        interview answers · stop-gate answers · riskiest assumption · GAP list
-  storyline.md    ordered assertions on the eight-act spine, each FACT or GAP
+  storyline.md    ordered assertions on the six-act spine, each FACT or GAP
+  brand.md        house standard · palette · font · asset paths · the four decisions
 ```
 
 Prospect mode:
@@ -293,6 +327,8 @@ Prospect mode:
 prospects/<slug>/
   brief.md        prospect-specific answers · documents on hand · GAP list
   storyline.md    ordered assertions, ISSUES act built from their documents
+  brand.md        inherits the product-mode brand.md · adds the prospect's logo and
+                  evidence-photo paths, and any co-branding this deal needs
 ```
 
 ## Handoff
@@ -322,7 +358,10 @@ prospects/<slug>/
    stops and asks for one.
 5. The storyline is assertions, not topics, and it fixes the order the later phases
    follow. Reordering during drafting means coming back here, not improvising.
-6. **No address is ever committed.** Not a path, not a vault or workspace name, not a
+6. **`brand.md` is an output of this phase, not of the render phase.** `catalog-visual`
+   refuses to start without it. An unfilled `[RUNTIME PLACEHOLDER]` is not a neutral
+   default — it hands the design decision to an image model.
+7. **No address is ever committed.** Not a path, not a vault or workspace name, not a
    project or company name, not a person's name — not in this skill and not in
    `references/`. The plugin ships the instruction to look; the user's own environment
    supplies where. Enforced by `bash tests/guard-generic.sh`.

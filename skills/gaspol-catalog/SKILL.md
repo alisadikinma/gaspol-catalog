@@ -31,7 +31,8 @@ further along than the last.
 | `brief.md` + `storyline.md` exist, no master catalog yet | `catalog-master` |
 | A prospect's `brief.md` + `storyline.md` exist | `catalog-variant` |
 | A deck exists and is about to be sent, shown, or handed over | `catalog-gate` |
-| `catalog-gate` layer one returned PASS | `catalog-visual` |
+| `catalog-gate` layer one returned PASS **and `brand.md` is complete** | `catalog-visual` |
+| Layer one PASSED but `brand.md` is missing or still has placeholders | back to `catalog-brainstorm` for the brand intake — do not render |
 | Images exist and need checking | `catalog-gate` again, for layer two |
 | Both layers PASSED and it is time to send | `catalog-finish` |
 | Prices or product facts changed | `catalog-brainstorm` product mode again, then `catalog-master`, then re-gate every variant that quoted them |
@@ -58,6 +59,23 @@ before the interview invents the buyer's problem, and an invented problem surviv
 every later review because nothing downstream has the facts to contradict it. The
 gate catches a wrong number; it cannot catch a right number answering a question
 nobody has.
+
+## Nothing is rendered before the brand is asked for
+
+`catalog-visual` **refuses to start** without a complete `brand.md` from
+`catalog-brainstorm` — the seller's house standard, palette, fonts, asset paths, and
+four decisions that belong to the seller rather than to this plugin.
+
+This is the newest of the plugin's refusals and it was bought expensively. A 19-slide
+deck was interviewed, drafted, reviewed, and rendered with every visual value still an
+unfilled placeholder. The image model supplied its own defaults for all of them, and
+the seller rejected the finished deck on sight as generic AI output — with not one
+slide wrong on the facts. An unfilled placeholder is not a neutral default; it hands
+the design decision to an image model.
+
+The same intake settles four things the plugin used to decide alone and had rejected
+each time: human faces, naming the incumbent vendor, the shape of the maturity
+admission, and pilot-versus-simultaneous rollout.
 
 ## The gate is never skipped
 

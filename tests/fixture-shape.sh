@@ -24,12 +24,18 @@ grep -qiE 'sudah terbukti di ratusan|telah digunakan ribuan' "$B" \
   || { echo "bad fixture kehilangan cacat: klaim kematangan palsu (lapis h)"; fail=1; }
 grep -qiE 'promo terbatas|hanya hari ini|kuota tinggal' "$B" \
   || { echo "bad fixture kehilangan cacat: urgensi tak berlaku (lapis i)"; fail=1; }
+# Babak PRODUK kosong: nol permukaan produk yang benar-benar dipakai pembeli.
+grep -qiE 'dasbor|tablet|layar kantor' "$B" \
+  && { echo "bad fixture kehilangan cacat: babak PRODUK seharusnya kosong (lapis b)"; fail=1; }
 
 # Fixture baik WAJIB bersih dari keenamnya
 grep -qiE 'world-class|end-to-end terintegrasi' "$G" \
   && { echo "good fixture tercemar fluff"; fail=1; }
 awk '/^# COVER/,/^## /' "$G" | grep -qiE 'Rp|IDR' \
   && { echo "good fixture menaruh harga di cover"; fail=1; }
+# Babak PRODUK wajib terisi: pembeli melihat benda yang akan dipakai, bukan hanya bagan.
+grep -qiE 'dasbor|tablet|layar' "$G" \
+  || { echo "good fixture kehilangan babak PRODUK (lapis b)"; fail=1; }
 
 [ "$fail" -eq 0 ] && echo "fixture shape OK"
 exit "$fail"

@@ -6,12 +6,34 @@
 Berlaku untuk penggelaran barang modal ke operator: pelacakan armada, akses gerbang,
 sensor terpasang, sistem yang menyentuh alur kerja lapangan sehari-hari.
 
+## Model penggelaran adalah keputusan penjual, bukan default plugin
+
+⚠️ **Baca ini sebelum memakai tabel di bawah.** Berkas versi lama menulis pilot satu
+lokasi sebagai model penjualan, dan `catalog-brainstorm` memakainya sebagai asumsi
+pertanyaan linimasa. Yang dihasilkannya di satu deck nyata: sebuah slide yang meminta
+prospek memulai di satu cabang dulu, pada penawaran yang penjualnya memang berniat
+menggelar serentak. Penjualnya menghapus slide itu dan menyebutnya pemikiran yang
+mengecilkan penawarannya sendiri.
+
+Dua model, dua-duanya sah:
+
+| | Pilot satu lokasi | Serentak |
+|---|---|---|
+| menurunkan | risiko pembeli | waktu sampai sistem utuh |
+| menaikkan | peluang tutup pada pembeli yang berhati-hati | ukuran transaksi dan momentum |
+| ongkosnya | pendapatan penuh tertunda; deck bisa terbaca sebagai penjual yang ragu pada produknya sendiri | prospek menanggung risiko yang lebih besar di depan, jadi bukti operasionalnya harus lebih kuat |
+| cocok saat | teknologinya asing bagi pembeli, atau lokasinya sangat berbeda satu sama lain | penjual sudah punya penggelaran berjalan yang bisa ditunjuk, dan lokasinya seragam |
+
+**Tanyakan, catat jawabannya di `brand.md`, dan susun linimasa dari jawaban itu.**
+Pertanyaan linimasa di `catalog-brainstorm` tidak boleh lagi mengasumsikan salah satu.
+
+Sisa berkas ini menjelaskan model berfase, dan berlaku **hanya kalau model itu yang
+dipilih.**
+
 ## Survei → Pilot satu titik → Rollout
 
 Bukti-konsep berfase di **satu lokasi** sebelum rollout penuh menurunkan risiko
-pembeli dan membangun champion internal. Ini menunda pendapatan penuh tapi menaikkan
-peluang tutup — terutama saat pembelinya berhati-hati terhadap teknologi yang asing
-baginya.
+pembeli dan membangun champion internal.
 
 | Fase | Isi | Yang dibuktikan |
 |---|---|---|
@@ -66,10 +88,15 @@ membenarkan ukuran transaksi di luar keterlibatan transaksional.
 ## Kematangan platform ≠ kematangan modul
 
 Platform bisa berjalan di produksi sementara modul spesifik-prospek di atasnya baru
-dirakit pertama kali. **Dua-duanya wajib dilabeli terpisah di badan slide.**
+dirakit pertama kali. **Dua-duanya wajib dilabeli terpisah di badan slide** — sebagai
+penanda kecil yang menempel di modulnya, bukan sebagai slide pengakuan tersendiri
+(lihat pagar kejujuran #12, yang direvisi persis di titik ini).
 
-Modul baru dijual sebagai **pilot dengan kriteria terima**, tidak pernah sebagai
-sesuatu yang sudah terbukti. Mengaburkan keduanya adalah risiko terbesar deck yang
+Modul baru tidak pernah dijual sebagai sesuatu yang sudah terbukti di banyak tempat.
+Kalau model berfase yang dipilih, ia dijual sebagai **pilot dengan kriteria terima**;
+kalau serentak yang dipilih, yang menggantikan perannya adalah kriteria terima per
+fase di linimasa dan termin yang menahan angsuran terakhir sampai pendampingan
+selesai. Mengaburkan keduanya adalah risiko terbesar deck yang
 menyamar sebagai kekuatannya, dan itu memblokir di lapis (h).
 
 ## Peran perangkat keras adalah keputusan per-prospek

@@ -50,7 +50,7 @@ fixture yang dirapikan supaya cocok dengan rencana.
 | satuan yang pembeli hitung | order, panggilan per hari, perjalanan | dimensi 2 |
 | dua lapis kematangan dipisah di badan slide | Lapis 1 berjalan / Lapis 2 rakitan pertama | (e) |
 | jalan keluar risiko bertanggal | kriteria terima ditulis prospek, boleh berhenti tanpa tagihan | dimensi 6 |
-| baris di luar lingkup ada | di slide linimasa | (g) |
+| baris di luar lingkup ada | di slide linimasa, atau di kartu harga kalau linimasa tidak dipakai | (g) |
 | temuan dibawa sebagai pertanyaan | "apakah selisih ini memang belum pernah ditelusuri?" | (g) |
 | urgensi benar-benar berlaku | tenggat 30 Sept terikat tutup kuartal; mulai 1 Okt konsekuensinya; harga sesudah tenggat disebut | (h) |
 | termin membayar risiko prospek | angsuran akhir setelah pendampingan | dimensi 9 |

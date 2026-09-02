@@ -1,6 +1,6 @@
 ---
 name: catalog-visual
-description: Fifth phase of gaspol-catalog, run only after catalog-gate layer one PASSES. Use to author one 16:9 image prompt per slide and assemble the sendable file — bikin prompt gambar slide penawaran, render slide katalog, buat visual deck B2B, susun PDF penawaran, tempel pita babak dan logo. Bakes each slide's exact headline and numbers into the prompt verbatim, carries the render guards that stop duplicated text and fabricated numbers, leaves logo and chapter rail as paste-after-render slots, and hands the PNGs back to catalog-gate layer two, which blocks on its own. Image MCP is optional; the prompts are the deliverable.
+description: Fifth phase of gaspol-catalog, run only after catalog-gate layer one PASSES and brand.md exists. Use to author one 16:9 image prompt per slide and assemble the sendable file — bikin prompt gambar slide penawaran, render slide katalog, buat visual deck B2B, susun PDF penawaran, tempel pita babak dan logo. Follows the seller's own house standard from brand.md rather than a generic default, bakes each slide's exact headline and numbers into the prompt verbatim in the deck's own language, carries the seventeen render guards that stop duplicated text, fabricated numbers, leaked layout words, leaked slot words, leaked icon descriptions, miscounted objects, stray brand logos, faces on props, and language and spelling drift, leaves logo and chapter rail as paste-after-render slots, and hands the PNGs back to catalog-gate layer two, which blocks on its own. Image MCP is optional; the prompts are the deliverable.
 ---
 
 # catalog-visual
@@ -11,116 +11,179 @@ description: Fifth phase of gaspol-catalog, run only after catalog-gate layer on
 
 **Announce:** "Running catalog-visual — one prompt per slide, then back to catalog-gate layer two."
 
-## Precondition — layer one PASS
+## Two preconditions, both blocking
 
-`review.md` layer one verdict = **PASS**. Do not author prompts for a deck that has
-not passed the text layer. Rendering an unreviewed deck multiplies the cost of every
-fix: a wrong word is one edit in `deck.md` and one regenerated PNG, and a wrong
-storyline is the whole deck twice.
+1. **`review.md` layer one verdict = PASS.** Rendering an unreviewed deck multiplies
+   the cost of every fix: a wrong word is one edit and one regenerated PNG, a wrong
+   storyline is the whole deck twice. If layer one is BLOCKING, return to
+   `catalog-variant` or `catalog-master` with its fix list.
 
-If layer one is BLOCKING, return to `catalog-variant` or `catalog-master` with its fix
-list. Do not start here.
+2. **`brand.md` exists and has no unfilled `[RUNTIME PLACEHOLDER]`.** If it is missing
+   or incomplete, STOP and run the brand intake in `catalog-brainstorm` — do not
+   render, and do not fill the gaps with your own taste.
+
+   This precondition is the whole reason this revision exists. A deck once rendered
+   with every palette and layout placeholder still empty; the image model supplied its
+   own defaults, and the seller rejected the finished deck outright as generic. An
+   unfilled placeholder is not neutral — it hands the design decision to the model.
+
+3. **Every prompt is a file before it is a render call.** Write
+   `prompts/slide-NN.md` first, render *from* that file, and make every later revision
+   by **editing the file** — never by retyping the prompt into the conversation.
+
+   This is the single most expensive defect this plugin has measured, and it is not on
+   the guard list because it is upstream of the guard list. A prompt that lives only in
+   a chat turn gets retyped from memory at the next revision. What survives retyping is
+   what a human remembers — the headline and the numbers. What silently dies is the
+   guard block, because it is long, dull, and invisible in the output until it fails.
+   A deck rendered five times that way collects five different defects, each one a
+   guard that has been written down for years.
 
 ## Load (the brain)
 
-- `../../references/b2b/b2b-visual-contract.md` — **the authority.** Zero faces, 16:9,
-  bright-corporate tone, the 60/40 canvas contract, one-colour-one-job palette rules,
-  the four render guards (A duplicated text, B fabricated numbers and phrases, C the
-  three silent leaks, D logo and lockup), E chapter rail and full-bleed, and the PDF
-  distribution rules.
+- `../../references/b2b/b2b-brand-intake.md` — **read first.** The seller's own house
+  standard outranks every default below it.
+- `../../references/b2b/b2b-visual-contract.md` — **the authority.** The DEFAULT vs
+  KANON split, the 60/40 canvas contract, one-colour-one-job, the seventeen render guards
+  A–Q, ref-conditioning, generator hygiene, and the PDF distribution rules.
 - `../../references/b2b/b2b-deck-architecture.md` — which act each slide belongs to,
-  which slides carry a chapter rail and which carry none, the impact slide, the
-  cliffhanger glyph.
-- `deck.md` and `review.md` from `catalog-gate` — the source text, verbatim.
+  which slides carry a chapter marker and which carry none, the impact slide.
+- `brand.md`, `deck.md`, and `review.md` — the source, verbatim.
 
 ## Reuse (installed skills — optional, degrade gracefully)
 
 | Skill | For | If absent |
 |---|---|---|
-| `carousel-gen` (`ai-image-carousel-prompt-gen`) | the prompt machinery — author the prompt, the consumer fulfils it | Use the five-section template below. It is self-sufficient. |
-| `gaspol-design` | palette, font, and chart choice | Fall back to the palette rules in `b2b-visual-contract.md`. Note the fallback in the run output. |
+| `carousel-gen` (`ai-image-carousel-prompt-gen`) | the prompt machinery | Use the template below. It is self-sufficient. |
+| `gaspol-design` | palette, font, and chart choice **only where `brand.md` is silent** | Fall back to the palette rules in the visual contract. Note the fallback in the run output. |
 
-Neither is a hard stop. Note in the output which path was taken, because a deck
-themed by fallback and a deck themed by `gaspol-design` are not identical and the
-next revision needs to know which it is.
+Neither is a hard stop, but neither overrides `brand.md`. A house standard beats a
+design skill beats a plugin default, in that order, always.
 
 ## Step 1 — author one prompt per slide
 
-For EVERY slide in `deck.md`, write `prompts/slide-NN.md` in five sections:
+For EVERY slide in `deck.md`, write `prompts/slide-NN.md` in six sections.
+
+**Two documents, one direction.** `deck.md` may carry a short visual note per slide —
+the design intent, written in the deck's language, for a human to argue with.
+`prompts/slide-NN.md` is the render contract: generated **from** that note, carrying
+the full guard block. The note never renders anything and the prompt never invents
+intent. When they disagree, the note wins and the prompt is regenerated from it — a
+prompt edited to match a render that already happened is the pipeline running
+backwards.
+
+Each prompt file ends with a **revision log**: one line per regeneration, what changed
+and which defect forced it. Without that line the same guard gets deleted again next
+month by someone tidying up a long prompt. The
+instructions may be written in English; **every string that will be printed is quoted
+in the deck's own language, character for character.**
 
 ```
-LAYOUT:      variant + grid placement. ~60% canvas visual, ~40% text — the
-             single most decisive control in the whole file.
-VISUAL:      editorial / infographic / diagram. Objects and evidence.
-             NO HUMAN FACE on any slide, cover included.
-STYLE+PALETTE: bright and corporate-precise, never cinematic-dark. One structure
-             colour, one accent colour, neutral body — one colour, one job.
-             [RUNTIME PLACEHOLDER: palette + font from the user]
-TEXT:        the slide's EXACT headline and EVERY number, VERBATIM in quotes,
-             each with its font weight and size.
-CONSTRAINTS: the render guards below, in full, every time.
+LAYOUT:      geometry only — "upper third, left-aligned", "right half, three stacked
+             cards". ~60% canvas visual, ~40% text unless brand.md says otherwise.
+             NO ROLE WORDS: never write HEADLINE, SUBTITLE, CAPTION, PRODUCT LOGO,
+             BODY. The model prints them (guard G).
+VISUAL:      objects, scene, evidence. Shapes of icons only — never what an icon
+             means (guard H). Never a set of objects whose count must be exact
+             (guard F): print the number as large text instead.
+STYLE:       from brand.md — palette with each colour's one job, font, tone, ground.
+             Cite the house standard the layout came from.
+TEXT:        DAFTAR LENGKAP TEKS DI KANVAS INI — every printed string in quotes,
+             in the deck's language, each with its weight, size and position, and
+             every dashboard/chart label counted as a string (guard L). Closes with:
+             "no other text may appear on this canvas." (guard I)
+LANGUAGE:    ATURAN BAHASA — KRITIS. Name the language. Forbid translation and any
+             second language. (guard J)
+CONSTRAINTS: the guard block below, in full, every time.
+REFS:        file paths from brand.md for a specific face, an in-scene logo, or a
+             prospect evidence photo — plus the note that refs suspend no guard.
 ```
 
 ### The guard block — paste into every prompt, never abbreviate
 
-Each of these exists because a real deck shipped with the defect:
+Each exists because a real deck shipped with the defect. Full rationale in
+`b2b-visual-contract.md` §A–§L.
 
-- **Exactly once.** Every text block appears **once**. Name the container explicitly —
-  "the label sits inside the card and is not repeated outside it". Image models repeat
-  text; on one measured deck it hit nearly half the slides.
-- **No number that is not in the text.** Bake the exact figures from `deck.md` and
-  forbid any other number appearing on the canvas.
-- **One language.** Forbid a second language unless the deck itself is bilingual.
-- **The headline prints.** Never write "no other text" as a blanket instruction — it
-  deletes the headline that was supposed to print. Say which text prints, then forbid
-  the rest.
-- **Qualifiers print whole.** A hedge or a source note is text like any other: quote it
-  verbatim and require it complete. Half a qualifier is worse than none.
-- **Disclaimers survive.** When a prompt is upgraded, re-check that the illustration
-  stamp and confidentiality line are still in it. They are the first thing lost.
-- **Empty logo slot.** The prospect's wordmark is **never drawn by the model.** Leave
-  the slot empty and paste the file after rendering. A rendered wordmark is always
-  malformed, and a malformed wordmark on page one is the most expensive defect in the
-  deck. Place the lockup **inside the bottom band**, reversed and left-aligned — a
-  top-right corner placement collides with headlines whose length no prompt can
-  guarantee.
-- **No chapter rail in the prompt.** The rail is pasted after render, never generated.
-- **Full-bleed by pixel columns.** Say "the first and last pixel column", not
-  "edge to edge" — the latter does not reliably work.
+- **Exactly once** — every text block appears once; name its container explicitly.
+- **No number not in the text** — bake the exact figures, forbid every other number.
+- **Never count** — no set of objects whose quantity must be right. Print the number.
+- **No role words** — geometry, not `HEADLINE` / `PRODUCT LOGO`.
+- **No icon meanings** — the shape, never the sentence explaining it.
+- **Whitelist, then close** — list what prints, *then* forbid the rest. Never the
+  bare instruction "no other text": it deletes the headline that was meant to print.
+- **One language, named** — the deck's language, no translation, no second language.
+- **Qualifiers print whole** — a hedge or source note is text like any other.
+- **The `ILUSTRASI` stamp is a listed string** — once per slide, with its position.
+  It is the first thing lost when a prompt is upgraded; re-check it every revision.
+- **Dashboard contents are text** — every label inside a fake screen is quoted, or
+  the model invents city names and figures that read as the prospect's own data.
+- **Empty logo slot** — the wordmark is never drawn by the model. Paste it after
+  rendering, inside the bottom band. The single exception is a logo that is an object
+  in the scene (shop signage, an app header), which is done with `refs`, never with
+  a description.
+- **No chapter marker in the prompt** — pasted after render, never generated. The
+  page number is pasted too: a generated number drifts every time one slide is
+  re-rendered and the deck loses its order mid-revision.
+- **Full-bleed by pixel columns** — "the first and last pixel column", not "edge to
+  edge", which does not reliably work.
+- **An empty slot is a shape, not a role** (guard M) — "an empty light-grey rounded
+  rectangle, no text, no letters, no icon inside", plus an explicit ban on the word
+  `LOGO` appearing on the canvas. Naming the slot by its role gets the role printed
+  inside it.
+- **Every branded object is explicitly blank** (guard N) — laptop lids, phones,
+  monitors, packaging. Naming the object is not enough; its blankness must be asked
+  for, or the model attaches a real manufacturer's mark on its own.
+- **Zero faces reaches into the props** (guard O) — cards, screens, posters, frames.
+  State what is on the prop ("a plain white card with two thin lines, no photo, no
+  face"), or a face arrives inside the object the characters are holding.
+- **A brand word beside its mark prints once** (guard P) — when a logo tile sits inline
+  with a company name, say so: "the word <name> is written EXACTLY ONCE on the whole
+  canvas, right after its mark."
+- **Spelling is checked letter by letter** (guard Q) — after render, re-read every
+  whitelisted string against the deck character for character, not for presence.
+  Non-English suffixes drop off the last word of a long sentence and the sentence still
+  looks right.
 
-## Step 2 — render, if an image MCP exists
+## Step 2 — render, if an image generator exists
 
-Detect any image-generation MCP and confirm its model id through the server's own
-model-listing tool rather than assuming one.
+Confirm the model id through the server's own model-listing tool rather than assuming
+one. **Raise the poll timeout before rendering, not after a failure** — a dense slide
+has exceeded 420 seconds and succeeded at 540, and a timed-out render still spends
+its quota.
 
-- **MCP present** → generate `slide-NN.png` per prompt. Then run a first-pass
-  inspection with a fresh subagent prompted "assume there are issues — find them":
-  overflow, clipping, garbled glyphs, a number that does not match `deck.md`, broken
-  layout. Regenerate on defect, at most twice, then flag for manual fix.
-- **MCP absent** → write a one-line note at the top of `prompts/` — "no image MCP,
-  paste each prompt manually" — and stop after the prompts. **This is not a failure.**
-  The prompts are the deliverable, and `catalog-gate` layer two will correctly report
-  `NOT RUN`.
+- **Generator present** → generate `slide-NN.png` per prompt. Then run a first-pass
+  inspection with a fresh subagent prompted "assume there are issues — find them",
+  checking specifically for the seventeen guard classes plus overflow, clipping, and
+  garbled glyphs. Regenerate on defect, at most twice, then flag for manual fix.
+  **Move every rejected render to `prompts/_rejected/` with a filename saying what
+  was wrong** — never overwrite it. Without the rejected file, the same defect gets
+  re-argued at the next revision.
+- **Generator absent** → note "no image generator, paste each prompt manually" at the
+  top of `prompts/` and stop after the prompts. **This is not a failure.** The prompts
+  are the deliverable and `catalog-gate` layer two will correctly report `NOT RUN`.
 
-This first pass is **not** the gate. It catches gross breakage cheaply so the gate is
-not spent on obvious defects. The gate still runs, in full, afterwards.
+This first pass is **not** the gate. It catches gross breakage cheaply. The gate still
+runs, in full, afterwards.
 
 ## Step 3 — assemble what the model must not draw
 
 Three things are composited after rendering, never generated:
 
-1. **Chapter rail** — a full-height vertical band on the **left edge**, text rotated
-   90°, structure colour for ISSUES and accent colour for SOLUTIONS. Content slides
-   only: cover, timeline, next, CTA, and closing carry **none** — their act is already
-   finished. Band width around 1.7% of canvas; the band's font size scales to canvas
-   width, never an absolute pixel value, because small text is unreadable from three
-   metres away in a meeting room. When QA measures band height, measure the
+1. **Chapter marker** — shape and position from `brand.md`; the visual contract's
+   left vertical band is only the default. Content slides only: cover, timeline, next,
+   CTA, and closing carry none — their act is already finished. Font size scales to
+   canvas width, never an absolute pixel value. When QA measures it, measure the
    **proportion of dark pixels**, not average luminance.
-2. **Client logo** — the real file, pasted into the bottom band.
+2. **Logos** — the real files, pasted into the bottom band.
 3. **PDF distribution chrome** — a **repeating diagonal watermark across the whole
-   page**, not one corner stamp, since a corner stamp disappears the moment someone
-   photographs part of a slide. Watermark colour follows each page's light or dark
-   value, at roughly 5% opacity; heavier than that and it fights the content. The
+   page**, not one corner stamp, which disappears the moment someone photographs part
+   of a slide. Measured settings that work: each instance **10–14% of canvas width**,
+   tiled to roughly **three columns by four rows**, rotated 30°, odd rows offset half a
+   column, **8–12% opacity**. Fit the text by its size **after** rotation — a single
+   mark sized to 58% of the width reads as a printing fault and gets clipped at the
+   corners once turned. Pick the colour **per page** from the luminance of the centre
+   band (about 15–85% of width, 20–80% of height): white on dark pages, the structural
+   colour on light ones. A dark mark on a dark page is no watermark at all. The
    confidentiality line goes in a band **outside the slide area** — extend the page
    slightly downward — because inside the frame it collides with something now or in
    the next revision.
@@ -128,33 +191,44 @@ Three things are composited after rendering, never generated:
 ## Step 4 — hand back to the gate
 
 Submit the PNGs to **`catalog-gate` layer two**. That layer blocks on its own and is
-the reason this phase exists as a separate step at all: a deck has passed layer one
-and blocked on layer two the same day, because the text was right and the prompt was
-wrong. No amount of text review could have caught it.
+why this phase exists separately: a deck has passed layer one and blocked on layer two
+the same day, because the text was right and the prompt was wrong.
 
 On any render defect, fix **the prompt**, regenerate that slide, and re-submit. Do not
-edit `deck.md` to match what the image happened to render — that inverts the whole
-pipeline and silently rewrites a passed deck to fit a mistake.
+edit `deck.md` to match what the image happened to render — that inverts the pipeline
+and silently rewrites a passed deck to fit a mistake.
 
 ## Output
 
 ```
 prompts/
-  slide-NN.md           one per slide, five sections, full guard block
-  README.md             MCP present or absent · gaspol-design or fallback theming
-  slide-NN.png          only if an image MCP rendered them
+  slide-NN.md           one per slide, six sections, full guard block, revision log
+  README.md             generator present/absent · house standard or fallback theming
+  slide-NN.png          only if an image generator rendered them
+  _rejected/            every discarded render, named for its DEFECT — never _v2,
+                        _v3, or a date. A version name keeps the order; only a defect
+                        name keeps the reason.
 ```
 
 Then → `catalog-gate` layer two → `catalog-master` / `catalog-variant` on BLOCKING.
 
 ## Hard rules
 
-1. Layer one PASS is the precondition. No PASS, no prompts.
-2. Zero human faces, on every slide, including the cover — a founder's face makes the
-   reader price an individual consultant rather than a company they can contract.
-3. Brand chrome is a runtime placeholder. Never bake a specific logo, colour value,
-   font name, or handle into a prompt or into `references/`.
-4. Logo, chapter rail, and watermark are composited, never generated.
-5. Every number in a prompt is copied verbatim from `deck.md`. A number that appears
+1. Layer one PASS **and** a complete `brand.md`. Either one missing, no prompts.
+2. `brand.md` outranks this skill; this skill outranks the plugin defaults. Never the
+   other way round.
+3. Human faces follow `brand.md`. Default is zero. Where a face is approved, it is
+   conditioned from the portrait file via `refs` — a described face is a different
+   person every render.
+4. Brand chrome is runtime input. Never bake a specific logo, colour value, font name,
+   or handle into a prompt or into `references/`.
+5. Logo, chapter marker, and watermark are composited, never generated — except a logo
+   that is an object inside the scene, which is `refs`.
+6. Every number in a prompt is copied verbatim from `deck.md`. A number that appears
    only on the canvas is a fabricated number, and the gate treats it as one.
-6. An unrendered deck reports layer two as `NOT RUN`. Never as PASS.
+7. Never ask the model to draw a countable set. Print the number.
+8. An unrendered deck reports layer two as `NOT RUN`. Never as PASS.
+9. **No render without its prompt file.** Every generation and every regeneration runs
+   from `prompts/slide-NN.md`. Retyping a prompt into the conversation drops the guard
+   block, and the guard block is the only part of the prompt nobody notices missing
+   until the render comes back wrong.

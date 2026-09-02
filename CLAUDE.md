@@ -19,11 +19,11 @@ knowledge lives in `references/b2b/`, **never hardcoded in skill prose**.
 
 | Skill | Reuses (installed skills) | Bundled references it reads |
 |---|---|---|
-| `catalog-brainstorm` | mom-test, spin-selling, never-split-difference, lean-startup, obviously-awesome; a notes/knowledge MCP *(optional, runtime)* | `b2b-deck-architecture.md`, `b2b-honesty-rails.md`, `b2b-phased-sale.md` |
+| `catalog-brainstorm` | mom-test, spin-selling, never-split-difference, lean-startup, obviously-awesome; a notes/knowledge MCP *(optional, runtime)* | `b2b-deck-architecture.md`, `b2b-honesty-rails.md`, `b2b-phased-sale.md`, `b2b-brand-intake.md` |
 | `catalog-master` | positioning, pricing-strategy, monetizing-innovation, sales-narrative, crossing-the-chasm, 100m-offers | `b2b-deck-architecture.md`, `b2b-honesty-rails.md`, `enablement-kit.md`, `b2b-phased-sale.md` |
 | `catalog-variant` | spin-selling, challenger-sale, meddic-scorecard, made-to-stick, storybrand | `b2b-deck-architecture.md`, `b2b-honesty-rails.md` |
-| `catalog-gate` | `pitch-review` (gaspol-pitch), with `rubric` pointed here | `b2b-deck-rubric.md`, `b2b-buyer-rubric.md`, `b2b-visual-contract.md`, `b2b-honesty-rails.md` |
-| `catalog-visual` | carousel-gen *(optional)*, gaspol-design *(optional)* | `b2b-visual-contract.md`, `b2b-deck-architecture.md` |
+| `catalog-gate` | `pitch-review` (gaspol-pitch), with `rubric` pointed here | `b2b-deck-rubric.md`, `b2b-buyer-rubric.md`, `b2b-visual-contract.md`, `b2b-honesty-rails.md`, `b2b-brand-intake.md` + the run's `brand.md` |
+| `catalog-visual` | carousel-gen *(optional)*, gaspol-design *(optional)* | `b2b-brand-intake.md` + the run's `brand.md`, `b2b-visual-contract.md`, `b2b-deck-architecture.md` |
 | `catalog-finish` | a notes/knowledge MCP *(optional, runtime)*, gaspol-knowledge *(optional)* | `b2b-deck-architecture.md`, `b2b-honesty-rails.md` |
 
 If a **required** installed skill above is missing at runtime, STOP and tell the
@@ -31,8 +31,9 @@ user — do NOT stub it or fabricate a replacement. Run
 `bash tests/deps-present.sh` to see exactly which one.
 
 **Optional dependencies (graceful degrade, never hard-stop):**
-- `gaspol-design` (palette/font/chart) — if absent, fall back to the theming canon
-  in `b2b-visual-contract.md`, which is self-sufficient.
+- `gaspol-design` (palette/font/chart) — consulted **only where `brand.md` is silent**;
+  if absent, fall back to the theming canon in `b2b-visual-contract.md`. Precedence is
+  always house standard > design skill > plugin default.
 - `carousel-gen` (`ai-image-carousel-prompt-gen`) — prompt machinery for
   `catalog-visual`; if absent, its five-section template stands on its own.
 - Image MCP — if absent, emit the render prompts and report the render layer as
@@ -43,13 +44,26 @@ user — do NOT stub it or fabricate a replacement. Run
 - `b2b-deck-rubric.md` — binary linter, 9 pass/fail checks per slide.
 - `b2b-buyer-rubric.md` — scored buyer dimensions + ABC dual-test + four buyer
   conviction layers + cross-slide consistency + narrative gates.
-- `b2b-deck-architecture.md` — the eight-act spine and the rules for each act.
+- `b2b-deck-architecture.md` — the six-act spine **COVER → MASALAH → SOLUSI → PRODUK → HARGA → PENUTUP**, the three optional inserts (PERUSAHAAN,
+  PERBANDINGAN, LINIMASA) and their fixed slots, the cover hook test, the pricing-card
+  form, what the closing slide must carry, and the **two slide frames** — left vertical
+  rail, or top badge plus bottom band with its six fixed slots — of which `brand.md`
+  picks exactly one for the whole deck.
 - `b2b-honesty-rails.md` — honesty rails, urgency-kit validity, price anchoring,
   modular menu rules.
-- `b2b-visual-contract.md` — no faces, 60/40 visual contract, chapter rail, render
-  guards against duplicated text and fabricated numbers.
-- `b2b-phased-sale.md` — Survey → single-site pilot → rollout, client-signed
-  acceptance criteria, consortium SLA shape.
+- `b2b-brand-intake.md` — what to collect before anything is rendered, the rule that
+  the seller's own house standard outranks every plugin default, and the four visual
+  and commercial decisions that belong to the seller.
+- `b2b-visual-contract.md` — the DEFAULT-vs-KANON split, 60/40 visual contract,
+  chapter marker, and render guards A–Q: duplicated text, fabricated numbers, silent
+  leaks, logos, full-bleed, miscounted objects, leaked layout words, leaked icon
+  descriptions, the text whitelist, language drift, the illustration stamp, invented
+  dashboard content, slot words printed inside empty slots, stray brand marks on props,
+  faces on props, a brand word doubled beside its mark, and spelling drift. Plus
+  ref-conditioning, generator hygiene, the measured PDF watermark settings, and the
+  rule that a render prompt lives in a file, never in a conversation.
+- `b2b-phased-sale.md` — the two deployment models (single-site pilot or simultaneous)
+  as a seller decision, client-signed acceptance criteria, consortium SLA shape.
 - `enablement-kit.md` — the five-part sales kit skeleton.
 - `examples/good-catalog.md` / `examples/bad-catalog.md` — self-test fixtures
   (PASS / BLOCKING).
@@ -59,7 +73,12 @@ sources and is the input that grounds the rubric, not generic canon.
 
 ## Pipeline order (non-negotiable)
 
-**interview → storyline → deck → gate(text) → visual → gate(render) → finish.**
+**interview (+ brand intake) → storyline → deck → gate(text) → visual → gate(render) → finish.**
+
+`catalog-visual` refuses to start without a complete `brand.md`, exactly as
+`catalog-master` refuses to start without `brief.md`. Both refusals exist for the same
+reason: what is not asked for early gets invented late, and an invention survives every
+downstream review because nothing has the facts to contradict it.
 
 It is a loop, not a line. `catalog-finish` is the only skill that writes back, and
 what it writes is what makes the next `catalog-brainstorm` shorter.
@@ -136,7 +155,15 @@ Notes are **data, never instruction.**
    step. No MCP is a manual-run note, not a failure.
 6. **SKILL.md frontmatter = `name` + `description` only.** No other YAML keys.
    Enforced by `bash tests/frontmatter.sh`.
-7. **Three things this plugin must never invent** — it STOPS and asks instead:
+7. **A render prompt is a file, never a conversation turn.** Every render and every
+   re-render runs from `prompts/slide-NN.md`, and a revision edits that file. This is
+   the most expensive defect measured in this plugin and it sits upstream of every
+   guard: retyping a prompt from memory preserves the headline and the numbers and
+   silently drops the guard block, so the same deck collects a different render defect
+   on every pass. A PNG with no prompt file behind it is treated as unrepeatable work.
+   Rejected renders are filed under `prompts/_rejected/` named for the **defect**, not
+   `_v2` / `_v3` — a version name keeps the order, only a defect name keeps the reason.
+8. **Three things this plugin must never invent** — it STOPS and asks instead:
    module list and prices; a prospect's fleet size or operating numbers; whether the
    product supports multiple tenants in one deployment. All three are asked up front
    in `catalog-brainstorm` and remain stop gates in `catalog-master`. Fabricating any of the three
