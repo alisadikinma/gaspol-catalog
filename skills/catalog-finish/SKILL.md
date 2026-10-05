@@ -79,6 +79,8 @@ difference between a fact and a guess someone once agreed to on a Friday.
       countdown is tied to when it is sent, so a bundle finished Monday and sent
       Thursday has a wrong deadline unless the CTA slide is regenerated
 - [ ] client logo pasted, not generated; chapter rail pasted, not generated
+- [ ] page numbers stamped **only after** the human explicitly approved the rendered
+      slides and their order (`catalog-visual` Step 5), and no slide changed since
 - [ ] no reference customer's operational identity present beyond what the written
       permission allows
 - [ ] brand chrome is a runtime placeholder in `prompts/`, not a baked brand

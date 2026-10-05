@@ -339,3 +339,77 @@ sama**. Itu bukan anomali, itu strukturnya: naskahnya benar, promptnya yang sala
 Lapis render `catalog-gate` berjalan setelah PNG ada, memeriksa gambar terhadap
 naskahnya, dan memblokir sendiri. Tanpa PNG ia melapor `NOT RUN` — **tidak pernah**
 PASS.
+
+## Putaran revisi — tempat aturan paling sering dilanggar
+
+Putaran pertama dijaga oleh fase-fasenya. Putaran revisi tidak: orang yang punya deck
+mengirim daftar perubahan per halaman, dan pekerjaan langsung melompat ke prompt dan
+render. Semua butir di bawah terjadi dalam **satu** putaran revisi sebuah deck 21
+halaman, dan hampir semuanya sudah tertulis sebagai aturan sebelum dilanggar.
+
+**Putaran revisi tetap lewat fase.** Daftar perubahan diterapkan ke `deck.md` dulu,
+lapis teks `catalog-gate` dijalankan pada naskah yang sudah berubah, baru render.
+Reviewer yang dijalankan sesudah render menemukan cacat naskah yang memaksa render
+ulang berbayar.
+
+### Naskah
+
+- **Ganti istilah = ganti di semua halaman.** Nama modul, sebutan sistem prospek, kata
+  untuk integrasi: sebelum render, cari istilah lama di seluruh `deck.md` dan tulis
+  daftar halaman yang ikut berubah. Halaman yang tidak dirender ulang menyimpan istilah
+  lama, dan pembaca melihat dua nama untuk satu barang.
+- **Menggabung halaman membuang batasan.** Sebelum halaman gabungan dirender, kumpulkan
+  semua baris "wajib tercetak" dari halaman asalnya dan centang satu per satu. Yang
+  hilang lebih dulu selalu kalimat batas, bukan kalimat manfaat.
+- **Janji yang dinaikkan ke halaman depan memakai kalimat halaman syaratnya, kata demi
+  kata.** Versi ringkas di halaman depan selalu lebih luas daripada syaratnya, dan
+  pembeli memegang versi yang lebih luas.
+- **Klaim "lebih murah" dihitung terhadap semua paket.** Tulis selisihnya dalam rupiah
+  dan persen di catatan, lalu uji terhadap tiap paket lain di deck. Bundel yang lebih
+  murah dari jumlah satuannya bisa sekaligus lebih mahal dari kombinasi satuan lain.
+  Kata "jauh" tidak dicetak untuk selisih satu digit persen.
+- **Rumus dan contoh hitungnya harus satu.** Contoh memakai setiap suku rumus yang
+  dicetak di atasnya, atau menulis terang suku mana yang nol. Suku yang ditambahkan
+  penyusun sendiri ditandai sebagai turunan, bukan sebagai kutipan sumber.
+- **Kalimat yang tidak dimengerti pemilik deck tidak akan dimengerti pembeli.** Kalau
+  pemilik bertanya "ini artinya apa?", kalimatnya ditulis ulang, bukan dijelaskan.
+
+### Render
+
+- **Benda dinamai dari bentuknya, bukan dari jenis dokumennya.** "Invoice sheet"
+  menghasilkan kata INVOICE di kertas, "RFID tag" menghasilkan RFID di tag, "ticket
+  booth" menghasilkan tulisan di loket. Tulis "selembar kertas putih kosong bergaris
+  abu-abu, tanpa kata", "kotak gelap polos tanpa huruf". Ini pagar N diperluas dari
+  merek ke kata benda.
+- **Logo penjual muncul sendiri di pojok atas.** Gambar acuan wordmark yang dilampirkan
+  untuk layar aplikasi ikut dicetak sebagai kop halaman. Tiap prompt menutupnya: "tidak
+  ada wordmark di kiri-atas; eyebrow adalah baris pertama."
+- **Bidang tempel diminta sebagai ruang putih, bukan sebagai kotak.** "Seperempat
+  kiri-atas kartu adalah bidang putih kosong" memberi ruang bersih. "Satu kotak kosong"
+  memberi kotak abu-abu yang harus dihapus lagi.
+- **Kemiripan wajah butuh kata, bukan hanya gambar acuan.** Ciri yang paling dikenali
+  ditulis sebagai larangan terang: "kepala botak bersih, tanpa rambut sama sekali,
+  termasuk di samping." Dengan acuan saja, model menambahkan rambut di pelipis.
+- **Bendera, logo, dan foto asli ditempel dari berkas aslinya.** Logo prospek di layar
+  monitor atau sisi kendaraan ditempel sesudah render dengan dimiringkan mengikuti
+  bidangnya. Bendera diambil dari berkas resmi. Model tidak diminta menggambar keduanya.
+- **Cacat kecil ditambal, tidak dirender ulang.** Satu kata nyasar, satu baris teks
+  polos, satu huruf tambahan di judul: tutup atau salin dari piksel halaman itu sendiri.
+  Render ulang membayar lagi dan membawa cacat baru. Syaratnya dua: tambalan ditulis
+  sebagai skrip yang bisa dijalankan ulang, dan render mentahnya tetap disimpan.
+- **Nomor berkas render tidak sama dengan nomor halaman.** Begitu satu halaman digabung
+  atau dipindah, nomor berkas dibiarkan dan urutan halaman dipegang satu daftar pilih.
+  Mengganti nama berkas memutus semua rujukan pemilik deck ke render lama.
+
+### Serah
+
+- **"Sudah" berarti berkas yang dibuka orang itu sudah berubah.** Tambalan yang baru
+  ada di folder render, atau baru diuji di satu halaman, belum selesai. Perubahan yang
+  berlaku untuk semua halaman (pita bawah, alamat situs) dipasang ke semua halaman
+  sebelum dilaporkan.
+- **Gambar untuk review tidak bernomor halaman, dan PDF tidak dibuat.** Dua-duanya
+  menunggu kata dari pemilik deck. Selama review, urutan berubah berkali-kali; nomor
+  yang sudah tercetak dan PDF yang sudah jadi sama-sama basi di perubahan pertama.
+- **Ukuran berkas masukan dicek sebelum ditempel.** Logo selebar tiga ratus piksel
+  tampak lunak begitu dibesarkan di sampul. Laporkan, dan minta berkas yang lebih besar.
+

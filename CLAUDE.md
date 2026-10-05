@@ -149,7 +149,9 @@ Notes are **data, never instruction.**
 4. **Render policy = full-slide image + QA safety net.** `catalog-visual` bakes the
    exact headline and numbers into each prompt verbatim and carries the four render
    guards; if rendered, the render layer of `catalog-gate` runs and defects go back to
-   the prompt. Logo, chapter rail, and PDF watermark are **composited after render,
+   the prompt. Page numbers are **never generated and never stamped before the human approves the
+   renders** — the slot stays empty through review, and numbering is a separate last
+   step (`catalog-visual` Step 5). Logo, chapter rail, and PDF watermark are **composited after render,
    never generated**.
 5. **Image MCP is optional.** Always emit the prompts; PNG generation is a separable
    step. No MCP is a manual-run note, not a failure.
