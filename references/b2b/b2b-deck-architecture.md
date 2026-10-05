@@ -214,7 +214,7 @@ berubah antar-halaman:
 | slot logo prospek | kanan atas, di bawah baris kerahasiaan | **kosong**, ditempel sesudah render |
 | slot logo penjual | kiri, di dalam pita bawah | **kosong**, ditempel sesudah render |
 | kalimat pukulan | tengah, di dalam pita bawah | satu kalimat huruf besar, mengunci maksud halaman |
-| nomor halaman | kanan, di dalam pita bawah | angka saja |
+| nomor halaman | kanan, di dalam pita bawah | **kosong** selama review; angka saja, ditempel setelah disetujui |
 
 Pita bawahnya sekitar **8% tinggi kanvas**, satu warna pekat, teks putih. Kalimat
 pukulan di dalamnya bukan hiasan: ia satu-satunya bagian slide yang menjamin halaman
@@ -227,8 +227,11 @@ mendadak butuh tata letak khusus.
 
 **KANON di kedua bentuk:** lencana, pita, logo, dan nomor halaman **ditempel setelah
 render, tidak pernah digenerate** — lihat `b2b-visual-contract.md` pagar D, E, dan M.
-Nomor halaman ikut ditempel, karena nomor yang digenerate ikut berubah tiap slide
-di-render ulang dan deck kehilangan urutannya di tengah revisi.
+Nomor halaman **tidak digenerate dan belum ditempel selama review**: slotnya dibiarkan
+kosong di setiap render dan revisi. Nomor yang digenerate berubah tiap slide di-render
+ulang, dan nomor yang ditempel terlalu cepat langsung salah begitu urutan slide diubah
+saat review. Nomor halaman ditempel **paling akhir, dalam langkah terpisah, hanya
+setelah pemilik deck bilang render-nya disetujui** — lihat `catalog-visual` Step 5.
 
 ## Pita tepi babak
 

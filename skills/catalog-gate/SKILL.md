@@ -163,8 +163,11 @@ against `brand.md`:
       scale, or marker placement reads as assembled rather than designed
 - [ ] **Placeholders resolved** — no `[RUNTIME PLACEHOLDER]` survived into a prompt
 - [ ] **Frame identical on every page** — the six fixed slots of the chosen frame sit
-      in the same position on all slides, page numbers run in order with no repeats
-      and no gaps
+      in the same position on all slides
+- [ ] **Page-number slot empty before approval** — while the human has not yet
+      approved the renders, any page number on any slide (generated or pasted) is a
+      defect. After approval and `catalog-visual` Step 5, numbers run 1..N in the
+      approved order with no repeats and no gaps
 - [ ] **Every image has a prompt file** — `prompts/slide-NN.md` exists for each render
       and carries its revision log. A PNG with no prompt file behind it cannot be fixed
       without re-deriving the whole prompt, and re-derivation is where guard blocks die

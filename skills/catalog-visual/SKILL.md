@@ -121,9 +121,12 @@ Each exists because a real deck shipped with the defect. Full rationale in
   rendering, inside the bottom band. The single exception is a logo that is an object
   in the scene (shop signage, an app header), which is done with `refs`, never with
   a description.
-- **No chapter marker in the prompt** — pasted after render, never generated. The
-  page number is pasted too: a generated number drifts every time one slide is
-  re-rendered and the deck loses its order mid-revision.
+- **No chapter marker in the prompt** — pasted after render, never generated.
+- **No page number anywhere in this phase** — not in the prompt, and not pasted in
+  Step 3 either. Its slot in the bottom band stays empty through every render and
+  every revision. A generated number drifts each time one slide is re-rendered, and
+  a pasted number goes stale the moment the human reorders, drops, or adds a slide
+  during review. Numbers are stamped in Step 5, and only after the human approves.
 - **Full-bleed by pixel columns** — "the first and last pixel column", not "edge to
   edge", which does not reliably work.
 - **An empty slot is a shape, not a role** (guard M) — "an empty light-grey rounded
@@ -167,7 +170,8 @@ runs, in full, afterwards.
 
 ## Step 3 — assemble what the model must not draw
 
-Three things are composited after rendering, never generated:
+Three things are composited after rendering, never generated. **The page number is
+not one of them** — its slot stays empty here; see Step 5.
 
 1. **Chapter marker** — shape and position from `brand.md`; the visual contract's
    left vertical band is only the default. Content slides only: cover, timeline, next,
@@ -197,6 +201,38 @@ the same day, because the text was right and the prompt was wrong.
 On any render defect, fix **the prompt**, regenerate that slide, and re-submit. Do not
 edit `deck.md` to match what the image happened to render — that inverts the pipeline
 and silently rewrites a passed deck to fit a mistake.
+
+## Step 5 — page numbers and the PDF, only after the human approves
+
+**No PDF exists before this step.** Review happens on the un-numbered PNGs. The PDF is
+built once, on the human's explicit word, in the same run that stamps the numbers and
+lays the watermark. A PDF built "so it is ready" is stale at the first reorder, and it
+gets forwarded.
+
+Page numbers are the **last** thing stamped, in a separate run, and **only after the
+human who owns the deck has reviewed the rendered slides and explicitly said they are
+approved.** Until that word is given, every slide ships to review with the page-number
+slot empty — including every re-render in between.
+
+- **Ask, never assume.** A PASS from `catalog-gate` layer two is not approval. Silence
+  is not approval. An approval of one slide is not approval of the order. Ask once,
+  plainly: "Urutan dan isi slide sudah final? Boleh saya tempel nomor halaman?"
+- **Stamp from the approved order**, not from file names: numbers run 1..N in the
+  order the human approved, with no gaps and no repeats.
+- **Any change after stamping resets this step.** A slide added, removed, moved, or
+  re-rendered means the numbers are stripped (restamp from the clean, un-numbered
+  render) and the human is asked again.
+- Keep the un-numbered renders. Stamp into a separate output so a later reorder never
+  has to paint over an old number.
+
+## Revision rounds
+
+A list of per-slide changes from the deck's owner is not a shortcut past the phases.
+Apply it to `deck.md`, run `catalog-gate` layer one on the changed text, then render.
+Read **"Putaran revisi"** in `b2b-visual-contract.md` before touching a prompt: term
+renames across slides, caveats lost in a merge, a promise restated more broadly than
+its terms, a "cheaper" claim that inverts for another package, objects that print their
+own name, and what "done" means.
 
 ## Output
 
@@ -232,3 +268,9 @@ Then → `catalog-gate` layer two → `catalog-master` / `catalog-variant` on BL
    from `prompts/slide-NN.md`. Retyping a prompt into the conversation drops the guard
    block, and the guard block is the only part of the prompt nobody notices missing
    until the render comes back wrong.
+10. **No PDF and no page number before the human says so.** Not as a draft, not "to
+    check the layout". Review runs on un-numbered PNGs.
+11. **A revision round runs the same phases.** Text change → layer one → render. A
+    reviewer run after rendering costs a second render.
+12. **"Done" means the file the human opens has changed** — on every slide the change
+    applies to, not on the one it was tested on.
