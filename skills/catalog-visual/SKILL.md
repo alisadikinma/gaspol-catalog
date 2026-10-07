@@ -147,6 +147,16 @@ Each exists because a real deck shipped with the defect. Full rationale in
   Non-English suffixes drop off the last word of a long sentence and the sentence still
   looks right.
 
+## Step 1b — the recurring character, before any slide
+
+If `brand.md` names a recurring character (a mascot, an AI assistant figure), render
+its **character sheet** first — full body and close-up on one canvas — from its own
+prompt file, get the owner's word on it, and attach it as a ref on every slide that
+shows the character. See "Tokoh, wajah, dan jumlah gambar acuan" in the visual
+contract: an AI figure must read as AI at slide distance, several faces go into one
+strip image because generators cap the ref count, and real team members may be drawn
+as cartoons with their photos as likeness refs only.
+
 ## Step 2 — render, if an image generator exists
 
 Confirm the model id through the server's own model-listing tool rather than assuming
@@ -170,7 +180,13 @@ runs, in full, afterwards.
 
 ## Step 3 — assemble what the model must not draw
 
-Three things are composited after rendering, never generated. **The page number is
+Three things are composited after rendering, never generated. Anything pasted **inside
+the scene** (a logo on a monitor, a vehicle side, an app header; a face photo in a
+frame) uses the single-colour slot technique in `b2b-visual-contract.md`, "Tempel
+sesudah render": the prompt asks for a flat area in one colour the palette never uses,
+a script finds it, checks the expected slot count, pastes the real file, and confirms
+zero leftover pixels of that colour. Flags, badges and sample-evidence cards are drawn
+by the same script, never re-rendered. **The page number is
 not one of them** — its slot stays empty here; see Step 5.
 
 1. **Chapter marker** — shape and position from `brand.md`; the visual contract's

@@ -401,6 +401,83 @@ ulang berbayar.
   atau dipindah, nomor berkas dibiarkan dan urutan halaman dipegang satu daftar pilih.
   Mengganti nama berkas memutus semua rujukan pemilik deck ke render lama.
 
+### Tempel sesudah render — bidang warna, bukan kotak kosong
+
+Semua butir di bawah datang dari satu putaran revisi sebuah deck 19 halaman yang
+memuat belasan logo, foto wajah, bendera, dan satu lencana.
+
+- **Tempat tempelan diminta sebagai bidang satu warna polos yang tidak dipakai di
+  mana pun di palet deck.** Model menggambar bidang itu di tempat dan kemiringan yang
+  benar; skrip mencari kelompok piksel berwarna itu dan menempel berkas aslinya. Ini
+  menggantikan "kotak kosong" dan "ruang putih" untuk tempelan yang berada **di dalam
+  adegan**: layar monitor, sisi kendaraan, papan nama, kop aplikasi di ponsel.
+- **Jumlah bidang per halaman ditulis sebagai angka yang diharapkan, dan skrip berhenti
+  kalau jumlahnya lain.** Model kadang menggambar logonya sendiri dan tidak menyisakan
+  bidang, atau memecah satu bidang jadi dua karena tertutup sosok. Tanpa hitungan itu,
+  logo masuk ke bidang yang salah tanpa ada yang tahu.
+- **Urutan bidang dipetakan terang.** "Bidang paling kiri = logo A, bidang di bawah
+  perisai = logo B." Urutan bawaan dari kiri ke kanan pernah menaruh logo perusahaan
+  keamanan di sisi truk.
+- **Bidang yang tertutup sebagian oleh sosok diisi per piksel, bukan dengan pelat.**
+  Pelat persegi menutup kepala atau lengan orang yang berdiri di depannya. Ganti hanya
+  piksel berwarna bidang itu; sosok di depannya tetap utuh.
+- **Kalau model tetap menggambar logonya sendiri, timpa di titik tetap.** Koordinatnya
+  ditulis di skrip dengan catatan render mana yang ia maksud. Render ulang menghapus
+  koordinat itu, jadi catatannya wajib.
+- **Sesudah tempel, hitung sisa piksel warna bidang. Angkanya harus nol.** Sisa tipis
+  di tepi bidang terlihat sebagai garis mencolok di PDF.
+- **Tambahan kecil dikerjakan skrip, tidak dirender ulang.** Bendera negara, lencana
+  jaminan, kartu ulasan contoh, satu baris teks yang pudar: semuanya digambar atau
+  ditempel skrip di atas render yang sudah lolos. Bendera sederhana digambar dari
+  bentuk dasarnya pada ukuran berlipat lalu dikecilkan, supaya tepinya halus.
+- **Bendera dan lencana berdiri di samping logo, tidak di atasnya.** Tanda yang
+  menumpang di pojok logo menutup huruf terakhirnya. Kecilkan logonya sedikit dan beri
+  tanda itu tempat sendiri di bidang yang sama.
+- **Logo yang harus terbaca boleh lebih besar dari bidangnya.** Bidang dari model hampir
+  selalu terlalu kecil untuk logo yang pemilik deck minta "jelas". Skrip memperbesar
+  kotaknya dengan faktor tertulis, lalu hasilnya dilihat lagi.
+- **Bukti contoh ditulis sebagai contoh di gambarnya.** Kartu ulasan bintang lima,
+  tangkapan layar pesan, sertifikat: kalau bukan milik nyata, kata "contoh" tercetak di
+  kartunya sendiri, bukan di catatan kaki.
+
+### Tokoh, wajah, dan jumlah gambar acuan
+
+- **Tokoh yang muncul di banyak halaman dibuat dulu sebagai satu lembar tokoh.** Badan
+  penuh dan close-up dalam satu gambar, dirender sekali, disetujui pemilik deck, lalu
+  dilampirkan sebagai acuan di tiap halaman tempat tokoh itu muncul. Tokoh yang hanya
+  dideskripsikan berganti wajah dan kostum di tiap halaman.
+- **Tokoh AI harus terbaca sebagai AI dari jarak baca slide.** Lencana kecil
+  bertulisan "AI" tidak cukup; pemilik deck melihat perempuan biasa. Yang terbaca:
+  chip hologram, cincin cahaya, ikon data yang melayang, cahaya di tepi badan. Tanda
+  itu ditulis di prompt tiap halaman, bukan hanya di lembar tokoh.
+- **Kostum dan nama tokoh adalah keputusan pemilik deck.** Tanyakan di asupan merek.
+  Kostum yang dipilih penyusun diganti di putaran berikutnya, dan tiap halaman yang
+  memuat tokoh itu ikut dirender ulang.
+- **Wajah orang nyata: tanyakan foto asli atau kartun.** Untuk halaman tim, pemilik
+  deck bisa meminta sosok kartun bergaya deck; berkas fotonya lalu hanya jadi acuan
+  kemiripan. Jawabannya dicatat di `brand.md`.
+- **Pembangkit gambar membatasi jumlah gambar acuan, dan menolak dengan galat umum.**
+  Satu panggilan dengan tujuh acuan ditolak tanpa penjelasan. Gabungkan wajah-wajah
+  ke satu gambar berjajar, dengan urutan yang disebut di prompt ("dari kiri: ...").
+- **Jumlah orang di teks dan di gambar dicocokkan.** Ini pagar F: model tidak bisa
+  berhitung. Kalau teks menulis lima orang dan gambar menunjukkan empat, laporkan ke
+  pemilik deck; jangan diam.
+- **Jabatan orang di pihak pembeli dikonfirmasi sebelum render.** "Direktur" yang
+  ternyata "Owner" memaksa halaman penutup dirender ulang.
+
+### Mutu render dan halaman review
+
+- **Halaman padat teks dirender di mutu lebih tinggi sejak awal.** Di mutu terendah,
+  satu halaman dengan banyak baris teks gagal ejaan tiga kali berturut-turut; di mutu
+  satu tingkat di atasnya ia lolos sekali jalan. Mengulang di mutu rendah lebih mahal.
+- **Halaman review memuat daftar "yang berubah di putaran ini" di paling atas**, dan
+  daftar itu ditulis ulang tiap putaran, bukan ditambah. Di bawahnya cacat yang sudah
+  diketahui penyusun tetapi belum diperbaiki. Pemilik deck tidak perlu menemukannya
+  sendiri.
+- **Permintaan "slide N" merujuk ke nomor di halaman review, bukan nomor berkas
+  render.** Kalau dua nomor itu berbeda, sebut dua-duanya saat melapor, dan tanyakan
+  kalau permintaannya bisa berarti dua halaman.
+
 ### Serah
 
 - **"Sudah" berarti berkas yang dibuka orang itu sudah berubah.** Tambalan yang baru

@@ -59,6 +59,10 @@ Semuanya **wajib ditanyakan**, jawabannya dicatat di `brand.md`:
 
 1. **Wajah manusia** — default nol wajah. Tapi slide perusahaan dengan portret
    pendiri adalah pilihan sah yang sering dipakai penjual. Tanya, jangan larang.
+   Tanya juga **foto asli atau kartun**: untuk halaman tim, penjual bisa meminta sosok
+   kartun bergaya deck dengan foto hanya sebagai acuan kemiripan. Dan tanya apakah ada
+   **tokoh berulang** (maskot, sosok asisten AI): nama, kostum, dan tanda pengenalnya
+   milik penjual, bukan pilihan penyusun.
 2. **Menyebut nama vendor lama** — default anonim. Sebagian penjual justru ingin
    menyebutnya terang-terangan karena di situ letak seluruh argumennya. Tanya.
 3. **Mengakui bagian yang belum pernah dibangun** — lihat pagar kejujuran #12. Ada
@@ -93,7 +97,8 @@ judul: <...> · badan: <...> · (fallback? y/t)
 logo penjual terang/gelap · logo prospek · foto bukti · portret
 
 ## Empat keputusan
-wajah: <nol | slide mana, berkas apa>
+wajah: <nol | slide mana, berkas apa> — <foto asli | kartun bergaya deck>
+tokoh berulang: <tidak ada | nama, kostum, tanda pengenal, berkas lembar tokoh>
 vendor lama: <anonim | disebut sebagai "...">
 pengakuan kematangan: <bentuk yang dipilih>
 model penggelaran: <pilot satu lokasi | serentak> — alasan komersialnya
