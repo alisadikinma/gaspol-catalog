@@ -199,3 +199,7 @@ section of `catalog-gate` define the contract.
 
 Prefix: CAT
 Last ticket: CAT-1
+
+## Tool-first rule (deckkit)
+
+Post-render deck work (PDF, watermark, numbering, footer band, text patch, logo slots, footer erase) has a library: `tools/deckkit/`, routed in `docs/tool-routing.md`. Use it before writing a script. If nothing fits, add a module to `tools/deckkit/` with a test and a routing row in the same session; never leave a reusable script in a client folder. Keep client names and absolute paths out of `tools/`.
