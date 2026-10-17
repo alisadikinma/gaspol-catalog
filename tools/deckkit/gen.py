@@ -10,10 +10,12 @@ from pathlib import Path
 
 from PIL import Image
 
+from .prompts import prompt_sha
+
 ENV_CLIENT = "DECKKIT_IMAGE_CLIENT"
 NO_CLIENT = "no image client: set image_client in the house standard or DECKKIT_IMAGE_CLIENT"
 NO_MODEL = "no model: pass --model or set image_model in the house standard"
-_LOCAL = re.compile(r"local: (\S+)")
+_LOCAL = re.compile(r"(?:^|\s)local: (.+?)\s*$", re.M)
 
 
 ENV_REEXEC = "DECKKIT_REEXEC"
@@ -76,17 +78,38 @@ def _install(src, dest):
             part.unlink(missing_ok=True)
 
 
+STALE = ("stale: prompt changed since render — move the old render to prompts/_rejected/ "
+         "(named for the defect) or use a new --ver")
+
+
+def _sidecar(dest):
+    return dest.with_name(dest.name + ".sha")
+
+
+def _existing_status(dest, item, pf):
+    """'exists' or STALE for a render already on disk. Compared with the manifest sha when it has
+    one, else (only when a sidecar exists) with the prompt file on disk."""
+    side = _sidecar(dest)
+    rendered = side.read_text(encoding="utf-8").strip() if side.is_file() else None
+    want = item.get("sha")
+    if want is None and rendered is not None and pf.is_file():
+        want = prompt_sha(pf.read_text(encoding="utf-8"))
+    if want is None:
+        return "exists"
+    return "exists" if rendered == want else STALE
+
+
 def _one(item, root, generator, out_dir, raw_dir, ver, tries, kw, with_style):
     n = item["n"]
-    name = f"{n:02d}-{ver}.png" if ver else f"slide-{n:02d}.png"
-    dest = out_dir / name
-    if dest.exists():
-        return n, "exists"
+    dest = out_dir / ver / f"{n:02d}.png" if ver else out_dir / f"slide-{n:02d}.png"
     pf = Path(item["prompt_file"])
     pf = pf if pf.is_absolute() else root / pf
+    if dest.exists():
+        return n, _existing_status(dest, item, pf)
     if not pf.is_file():
         return n, f"FAIL missing prompt {pf}"
-    prompt = pf.read_text(encoding="utf-8")
+    text = pf.read_text(encoding="utf-8")
+    prompt = text
     extra = {"style": "None"} if with_style else {}
     last = "no attempt"
     for _ in range(max(1, tries)):
@@ -98,9 +121,10 @@ def _one(item, root, generator, out_dir, raw_dir, ver, tries, kw, with_style):
             continue
         m = _LOCAL.search(r)
         if r.startswith("OK") and m and Path(m.group(1)).is_file():
-            out_dir.mkdir(parents=True, exist_ok=True)
+            dest.parent.mkdir(parents=True, exist_ok=True)
             try:
                 _install(m.group(1), dest)
+                _sidecar(dest).write_text(prompt_sha(text) + "\n", encoding="utf-8")
             except Exception as exc:
                 last = f"bad image: {type(exc).__name__}: {exc}"
                 continue
@@ -115,9 +139,12 @@ def run(manifest_path, generator, out_dir=None, raw_dir=None, ver=None, only=Non
     if not model:
         raise ValueError(NO_MODEL)
     manifest_path = Path(manifest_path).resolve()
-    root = manifest_path.parent.parent
-    out_dir = Path(out_dir) if out_dir else root / "renders"
-    raw_dir = Path(raw_dir) if raw_dir else root / ".tmp" / "mentah"
+    if ver is not None and (not str(ver).strip() or "/" in str(ver) or "\\" in str(ver) or str(ver) in (".", "..")):
+        raise ValueError(f"ver {ver!r} must be a plain name, not a path")
+    root = manifest_path.parent   # prompt_file entries resolve against the manifest's own directory
+    project = root.parent
+    out_dir = Path(out_dir) if out_dir else project / "renders"
+    raw_dir = Path(raw_dir) if raw_dir else project / ".tmp" / "mentah"
     raw_dir.mkdir(parents=True, exist_ok=True)
     items = json.loads(manifest_path.read_text(encoding="utf-8"))
     if only:

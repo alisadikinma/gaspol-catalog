@@ -91,10 +91,13 @@ def _logo_mask(size, o, logo):
     if not has_alpha:   # opaque file: stencil from luminance, background = corner pixel
         lum = np.asarray(lg.convert("L")).astype(np.float64)
         stencil = np.abs(lum - lum[0, 0])
-        stencil = stencil / stencil.max() * 255 if stencil.max() else stencil
-        m = Image.fromarray(stencil.astype(np.uint8))
+        if not stencil.max():
+            raise ValueError(f"logo has no visible pixels: {logo}")
+        m = Image.fromarray((stencil / stencil.max() * 255).astype(np.uint8))
     else:
         m = lg.getchannel("A")
+        if not np.asarray(m).max():
+            raise ValueError(f"logo has no visible pixels: {logo}")
     lw = max(1, int(w * o["logo_width"]))
     m = m.resize((lw, max(1, int(lw * m.height / m.width))), Image.LANCZOS)
     m = m.point(lambda v: int(v * o["logo_opacity"] / 255))

@@ -61,7 +61,7 @@ class FromPromptsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             write_prompt(d, "slide-01.md", [("headline", "One")])
             write_prompt(d, "notes.md", [("headline", "Nope")])
-            (Path(d) / "manifest.json").write_text('[{"n": 1, "prompt_file": "prompts/slide-01.md"}]')
+            (Path(d) / "manifest.json").write_text('[{"n": 1, "prompt_file": "slide-01.md"}]')
             (Path(d) / "_rejected").mkdir()
             write_prompt(Path(d) / "_rejected", "slide-03.md", [("headline", "Bad")])
             md = deckmd.from_prompts(d)
@@ -124,8 +124,8 @@ class FromPromptsSilentFailureTest(unittest.TestCase):
             write_prompt(d, "slide-02.md", [("headline", "TWO")])
             write_prompt(d, "slide-03.md", [("headline", "STRAY")])
             (Path(d) / "manifest.json").write_text(json.dumps([
-                {"n": 2, "prompt_file": "prompts/slide-02.md"},
-                {"n": 1, "prompt_file": "prompts/slide-01.md"}]))
+                {"n": 2, "prompt_file": "slide-02.md"},
+                {"n": 1, "prompt_file": "slide-01.md"}]))
             out = deckmd.from_prompts(d)
             self.assertNotIn("STRAY", out)
             self.assertLess(out.index("TWO"), out.index("ONE"))
@@ -135,8 +135,8 @@ class FromPromptsSilentFailureTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             write_prompt(d, "slide-01.md", [("headline", "ONE")])
             (Path(d) / "manifest.json").write_text(json.dumps([
-                {"n": 1, "prompt_file": "prompts/slide-01.md"},
-                {"n": 2, "prompt_file": "prompts/slide-02.md"}]))
+                {"n": 1, "prompt_file": "slide-01.md"},
+                {"n": 2, "prompt_file": "slide-02.md"}]))
             with self.assertRaisesRegex(ValueError, "slide-02.md"):
                 deckmd.from_prompts(d)
 

@@ -1,18 +1,67 @@
 """Slide spec (slides.json) + style preset + house standard -> prompts/slide-NN.md + manifest.json."""
+import datetime
+import hashlib
 import json
-import os
 import re
 from pathlib import Path
 
 from . import house as house_mod
 
 NO_SELLER = "no seller: pass --house or set GASPOL_CATALOG_HOUSE"
+LOG_HEADING = "REVISION LOG"
+_LOG_RE = re.compile(r"^REVISION LOG[ \t]*$", re.M)
+
+
+def prompt_sha(text):
+    """sha256 of a prompt file's text without its REVISION LOG section (a log edit is not a prompt change)."""
+    m = _LOG_RE.search(text)
+    body = text[:m.start()] if m else text
+    return hashlib.sha256(body.rstrip("\n").encode("utf-8")).hexdigest()
+
+
+def _log_lines(text):
+    """Lines under the REVISION LOG heading of an existing prompt file (blank tail dropped)."""
+    m = _LOG_RE.search(text)
+    if not m:
+        return []
+    lines = text[m.end():].splitlines()
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return [ln for ln in lines if ln.strip()]
+
+
+def _label(slide, index):
+    n = slide.get("n") if isinstance(slide, dict) else None
+    return f"slide {n}" if n is not None else f"slide at index {index}"
+
+
+def _check_slide(slide, index):
+    """Required keys and types; ValueError names the slide and the field."""
+    if not isinstance(slide, dict):
+        raise ValueError(f"slide at index {index}: must be an object")
+    label = _label(slide, index)
+    if "n" not in slide:
+        raise ValueError(f"{label}: field 'n' is missing")
+    if not isinstance(slide["n"], int) or isinstance(slide["n"], bool):
+        raise ValueError(f"{label}: field 'n' must be an integer")
+    for key in ("layout", "visual"):
+        if key not in slide:
+            raise ValueError(f"{label}: field '{key}' is missing")
+        if not isinstance(slide[key], str):
+            raise ValueError(f"{label}: field '{key}' must be a string")
+    if "text" not in slide:
+        raise ValueError(f"{label}: field 'text' is missing")
+    log = slide.get("log")
+    if log is not None and not isinstance(log, str):
+        raise ValueError(f"{label}: field 'log' must be a string")
 
 
 def _text_lines(slide, preset):
     """[(role, text)] with preset role keys expanded; validates quotes and emptiness."""
     n = slide.get("n")
     text = slide.get("text")
+    if not isinstance(text, (list, tuple)) and text:
+        raise ValueError(f"slide {n}: field 'text' must be a list of [role, text]")
     if not text:
         raise ValueError(f"slide {n}: field 'text' is empty")
     roles = preset.get("roles", {})
@@ -21,6 +70,10 @@ def _text_lines(slide, preset):
         if not isinstance(item, (list, tuple)) or len(item) != 2:
             raise ValueError(f"slide {n}: field 'text' entries must be [role, text]")
         role, value = item
+        if not isinstance(role, str):
+            raise ValueError(f"slide {n}: field 'text' role must be a string, got {role!r}")
+        if not isinstance(value, str):
+            raise ValueError(f'slide {n}, role "{role}": field \'text\' value must be a string, got {value!r}')
         role = roles.get(role, role)
         if '"' in value:
             raise ValueError(f'slide {n}, role "{role}": text contains a straight double quote')
@@ -62,14 +115,15 @@ def render_prompt(slide, preset, ctx):
     left = re.search(r"\{[a-z_]+\}", prompt)
     if left:
         raise ValueError(f"slide {slide.get('n')}: unfilled placeholder {left.group(0)} in the prompt")
-    return prompt
+    return prompt + f"\n\n{LOG_HEADING}"
 
 
 def _check_spec(slides, preset):
     seen = {}
     footers = {}
     for i, s in enumerate(slides):
-        n = s.get("n")
+        _check_slide(s, i)
+        n = s["n"]
         if n in seen:
             raise ValueError(f"slide {n}: duplicate n (entries {seen[n] + 1} and {i + 1})")
         seen[n] = i
@@ -81,19 +135,43 @@ def _check_spec(slides, preset):
                 footers.setdefault(value, n)
 
 
+def _style_ref_paths(style_refs, house_path):
+    out = []
+    for r in style_refs:
+        p = Path(r)
+        if not p.is_absolute():
+            if house_path is None:
+                raise ValueError(f"style_refs entry {r!r} is relative: it resolves against the house "
+                                 "standard file, so pass house_path (CLI: --house)")
+            p = Path(house_path).resolve().parent / p
+        out.append(p)
+    return out
+
+
 def _refs(slide, style_refs, spec_dir, ref_dir):
-    paths = [Path(r) for r in style_refs] + [Path(ref_dir) / r for r in slide.get("refs", [])]
+    paths = list(style_refs) + [spec_dir / Path(ref_dir) / r for r in slide.get("refs", [])]
     out = []
     for p in paths:
-        p = p if p.is_absolute() else spec_dir / p
         if not p.is_file():
             raise ValueError(f"slide {slide['n']}: field 'refs': file not found: {p}")
         out.append(str(p.resolve()))
     return out
 
 
-def build(spec_path, house=None, preset=None, out_dir=None, only=None):
-    """Write prompt files and manifest; returns the number of prompt files written."""
+def _with_log(body, old_text, log):
+    """``body`` (ends with the REVISION LOG heading) + carried-over log lines + one new dated line."""
+    lines = _log_lines(old_text) if old_text else []
+    if log and log.strip():
+        new = f"- {datetime.date.today().isoformat()} {log.strip()}"
+        if new not in lines:
+            lines.append(new)
+    return body + "\n" + "".join(ln + "\n" for ln in lines)
+
+
+def build(spec_path, house=None, preset=None, out_dir=None, only=None, house_path=None):
+    """Write prompt files and manifest; returns the number of prompt files written.
+
+    Relative house ``style_refs`` resolve against the directory of ``house_path``."""
     spec_path = Path(spec_path).resolve()
     spec_dir = spec_path.parent
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
@@ -115,18 +193,23 @@ def build(spec_path, house=None, preset=None, out_dir=None, only=None):
             raise ValueError(f"--only: no such slide n: {', '.join(str(n) for n in missing)}")
 
     out = Path(out_dir).resolve() if out_dir else spec_dir / "prompts"
-    rel = Path(os.path.relpath(out, spec_dir)).as_posix()
-    style_refs = house.get("style_refs", [])
+    style_refs = _style_ref_paths(house.get("style_refs", []), house_path)
     ref_dir = spec.get("ref_dir", "")
     manifest, rendered = [], {}
     for s in slides:
-        manifest.append({"n": s["n"], "sid": s.get("sid", ""),
-                         "prompt_file": f"{rel}/slide-{s['n']:02d}.md",
-                         "refs": _refs(s, style_refs, spec_dir, ref_dir)})
+        f = out / f"slide-{s['n']:02d}.md"
+        old = f.read_text(encoding="utf-8") if f.is_file() else None
+        entry = {"n": s["n"], "sid": s.get("sid", ""), "prompt_file": f.name,
+                 "refs": _refs(s, style_refs, spec_dir, ref_dir)}
         if not only or s["n"] in only:
-            rendered[s["n"]] = render_prompt(s, pre, ctx)
+            body = render_prompt(s, pre, ctx)
+            rendered[s["n"]] = _with_log(body, old, s.get("log"))
+            entry["sha"] = prompt_sha(body)
+        elif old is not None:
+            entry["sha"] = prompt_sha(old)
+        manifest.append(entry)
     out.mkdir(parents=True, exist_ok=True)
     for n, text in rendered.items():
-        (out / f"slide-{n:02d}.md").write_text(text + "\n", encoding="utf-8")
+        (out / f"slide-{n:02d}.md").write_text(text, encoding="utf-8")
     (out / "manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
     return len(rendered)

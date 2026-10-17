@@ -62,7 +62,8 @@ class RenderPromptTest(unittest.TestCase):
             "VISUAL: vis2\n\n"
             "STYLE for ContohAI.\n\n"
             'TEXT:\n- headline, large bold navy: "Judul 2"\n\n'
-            "RULES ContohAI. No people, no faces, no hands. End."))
+            "RULES ContohAI. No people, no faces, no hands. End.\n\n"
+            "REVISION LOG"))
 
     def test_ai_true_adds_clause(self):
         self.assertIn("RULES ContohAI plus AI.", prompts.render_prompt(slide(2, ai=True), PRESET, self.CTX))
@@ -111,7 +112,7 @@ class BuildTest(Base):
         self.assertTrue((out / "slide-10.md").is_file())
         man = json.loads((out / "manifest.json").read_text())
         self.assertEqual([m["n"] for m in man], [2, 10])
-        self.assertEqual(man[0]["prompt_file"], "prompts/slide-02.md")
+        self.assertEqual(man[0]["prompt_file"], "slide-02.md")
         self.assertEqual(man[0]["sid"], "s2")
         self.assertIn("ContohAI", (out / "slide-02.md").read_text())
 
@@ -183,7 +184,7 @@ class BuildTest(Base):
         prompts.build(self.spec([slide(2)]), house=HOUSE, preset=PRESET_NAME, out_dir=out)
         self.assertTrue((out / "slide-02.md").is_file())
         man = json.loads((out / "manifest.json").read_text())
-        self.assertEqual(man[0]["prompt_file"], "elsewhere/slide-02.md")
+        self.assertEqual(man[0]["prompt_file"], "slide-02.md")
 
     def test_bad_spec_missing_slides(self):
         p = self.dir / "slides.json"
@@ -272,7 +273,8 @@ class ParityTest(unittest.TestCase):
             n = prompts.build(FIXTURE, house=HOUSE, out_dir=d)
             self.assertEqual(n, 1)
             blocks = (Path(d) / "slide-02.md").read_text().strip().split("\n\n")
-        prefixes = ["A finished 16:9", "LAYOUT:", "VISUAL:", "STYLE:", "TEXT (print exactly", "RULES:"]
+        prefixes = ["A finished 16:9", "LAYOUT:", "VISUAL:", "STYLE:", "TEXT (print exactly", "RULES:",
+                    "REVISION LOG"]
         self.assertEqual(len(blocks), len(prefixes), blocks)
         for block, prefix in zip(blocks, prefixes):
             self.assertTrue(block.startswith(prefix), (prefix, block[:60]))

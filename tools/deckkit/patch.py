@@ -112,7 +112,7 @@ def emblem_text(text, font_path, size, core, glow, ring=None, tracking=0.0, radi
     disc-shaped RGBA square, with an optional ``ring`` colour outline. The square is sized so the
     lettering and its bloom fit inside the circle. Paste it over an erased emblem with
     :func:`paste_text` (``anchor='cb'``) or ``img.paste(em, xy, em)``."""
-    fonts.find_font(font_path)
+    font_path = fonts.find_font(font_path)
     lettering = glow_text(text, font_path, size, tracking, core, glow, radius=radius)
     diameter = int(np.ceil(np.hypot(lettering.width, lettering.height))) + 4
     em = Image.new("RGBA", (diameter, diameter), (0, 0, 0, 0))
@@ -201,11 +201,14 @@ def baseline_for_top(font_path, size, top):
     return top + _cap_height(font_path, size)
 
 
-def _ink_colour(img, bbox, thr=150):
+def _ink_colour(img, bbox, thr=150, dark=True):
     a = np.asarray(img.convert("RGB")).astype(int)[bbox[1]:bbox[3] + 1, bbox[0]:bbox[2] + 1].reshape(-1, 3)
     lum = a.mean(axis=1)
-    dark = a[lum <= np.percentile(lum[lum < thr], 25)]
-    return tuple(int(v) for v in dark.mean(axis=0))
+    if dark:
+        ink = a[lum <= np.percentile(lum[lum < thr], 25)]
+    else:
+        ink = a[lum >= np.percentile(lum[lum > thr], 75)]
+    return tuple(int(v) for v in ink.mean(axis=0))
 
 
 def _line_layer(text, font, tracking, fill, pad):
@@ -220,21 +223,22 @@ def _line_layer(text, font, tracking, fill, pad):
     return layer, base
 
 
-def replace_line(img, box, text, font_path=None, fill=None, align="left", squeeze=False):
+def replace_line(img, box, text, font_path=None, fill=None, align="left", squeeze=False, dark=True):
     """Swap one text line inside ``box`` and return a new image (``img`` is not changed).
 
     The old ink is measured, the box is lerp-filled, and ``text`` is set at the old ink's cap
     height, top aligned to the old ink. ``fill`` None samples the old ink colour. ``align`` keeps
     the old ink's left edge, right edge or centre. Text wider than the box raises ValueError;
-    ``squeeze=True`` first tracks it down to -0.04 em. The old ink height is read as the cap
+    ``squeeze=True`` first tracks it down to -0.04 em. ``dark=False`` reads light ink on a dark
+    ground (the default reads dark ink). The old ink height is read as the cap
     height, so a line carrying descenders in its old text sets slightly small."""
-    bbox = ink_bbox(img, box)
+    bbox = ink_bbox(img, box, dark=dark)
     if bbox is None:
         raise ValueError("no ink in box")
     if align not in ("left", "right", "center"):
         raise ValueError("align must be left, right or center")
     path = fonts.find_font(font_path)
-    ink = tuple(fill[:3]) if fill is not None else _ink_colour(img, bbox)
+    ink = tuple(fill[:3]) if fill is not None else _ink_colour(img, bbox, dark=dark)
     size = size_for_cap(path, bbox[3] - bbox[1] + 1)
     font = _font(path, size)
     avail = box[2] - box[0]

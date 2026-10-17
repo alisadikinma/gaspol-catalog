@@ -462,7 +462,7 @@ class BandOptionsTest(unittest.TestCase):
             src.mkdir()
             for n in ("01", "02"):
                 page((400, 300)).save(src / f"{n}.png")
-            rc = _quiet_cli(["band", str(src), str(dst), "--text", "X", "--url", "contoh.ai", "--numbers",
+            rc = _quiet_cli(["band", str(src), str(dst), "--text", "X", "--url", "contoh.ai", "--numbers", "--approved",
                              "--number-fmt", "{n}/{total}", "--fit-canvas", "800x450"])
             self.assertEqual(rc, 0)
             self.assertEqual(Image.open(dst / "02.png").size, (800, 450 + int(800 * 0.055)))

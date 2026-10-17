@@ -45,6 +45,14 @@ def _absolutize(args, manifest):
     return out
 
 
+APPROVED_MSG = "page numbers are stamped only after the renders are approved: pass --approved"
+
+
+def _need_approved(a):
+    if not a.approved:
+        raise ValueError(APPROVED_MSG)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="deckkit", description="Post-render deck tooling.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -70,6 +78,8 @@ def main(argv=None):
     s.add_argument("src")
     s.add_argument("dst")
     s.add_argument("--wordmark", help="dark-on-transparent logo png, drawn white")
+    s.add_argument("--approved", action="store_true",
+                   help="the human approved the renders (page numbers are stamped only after that)")
 
     s = sub.add_parser("band", help="add a footer band to each page")
     s.add_argument("src_dir")
@@ -79,6 +89,8 @@ def main(argv=None):
     s.add_argument("--url", help="small line under the logos, e.g. a web address")
     s.add_argument("--numbers", action="store_true",
                    help="draw page numbers from filename digits (only after the renders are approved)")
+    s.add_argument("--approved", action="store_true",
+                   help="the human approved the renders; required with --numbers")
     s.add_argument("--number-fmt", default="{n} / {total}", help="number text, uses {n} and {total}")
     s.add_argument("--fit-canvas", help="WxH: letterbox each page to this size before banding")
 
@@ -145,7 +157,7 @@ def main(argv=None):
     s = sub.add_parser("gen", help="prompt manifest -> slide images (image MCP)")
     s.add_argument("manifest")
     s.add_argument("--house", help="house standard file (image_client, image_model, image_mode)")
-    s.add_argument("--ver", help="version tag: output NN-<ver>.png (default slide-NN.png)")
+    s.add_argument("--ver", help="version tag: output <out>/<ver>/NN.png (default <out>/slide-NN.png)")
     s.add_argument("--only", nargs="*", type=int, default=[], help="render only these slide numbers")
     s.add_argument("--model", help="image model (default: house image_model)")
     s.add_argument("--mode", help="generator mode (default: house image_mode)")
@@ -178,9 +190,12 @@ def main(argv=None):
             print(f"{pptx.build_pptx(a.images, a.out, transition=a.transition, jpeg_quality=a.jpeg_quality)} slides -> {a.out}")
         elif a.cmd == "stamp":
             from . import stamp
+            _need_approved(a)
             print(f"stamped {len(stamp.stamp_dir(a.src, a.dst, a.wordmark))} pages")
         elif a.cmd == "band":
             from . import band
+            if a.numbers:
+                _need_approved(a)
             logos = [Image.open(p) for p in a.logos]
             os.makedirs(a.dst_dir, exist_ok=True)
             names = sorted(f for f in os.listdir(a.src_dir) if f.lower().endswith(".png"))
@@ -191,10 +206,18 @@ def main(argv=None):
                     assert len(fit) == 2
                 except (ValueError, AssertionError):
                     raise ValueError(f"--fit-canvas needs WxH like 2752x1536, got {a.fit_canvas!r}") from None
+            pages = {}
+            if a.numbers:
+                for n in names:
+                    digits = re.search(r"\d+", n)
+                    if not digits:
+                        raise ValueError(f"--numbers needs digits in the filename, got {n!r}")
+                    num = int(digits.group(0))
+                    if num in pages:
+                        raise ValueError(f"--numbers: {pages[num]!r} and {n!r} are the same page number {num}")
+                    pages[num] = n
             for n in names:
                 digits = re.search(r"\d+", n) if a.numbers else None
-                if a.numbers and not digits:
-                    raise ValueError(f"--numbers needs digits in the filename, got {n!r}")
                 band.add_band(Image.open(os.path.join(a.src_dir, n)), a.text, logos, url=a.url,
                               number=int(digits.group(0)) if digits else None,
                               total=len(names) if a.numbers else None,
@@ -276,7 +299,7 @@ def main(argv=None):
             hp = house.resolve(explicit=a.house, start=Path(a.spec).resolve().parent)
             h = house.load(hp) if hp else None
             out = Path(a.out) if a.out else Path(a.spec).resolve().parent / "prompts"
-            n = prompts.build(a.spec, house=h, preset=a.preset, out_dir=out, only=a.only or None)
+            n = prompts.build(a.spec, house=h, preset=a.preset, out_dir=out, only=a.only or None, house_path=hp)
             print(f"{n} prompt -> {out}")
         elif a.cmd == "gen":
             from pathlib import Path
@@ -307,7 +330,7 @@ def main(argv=None):
                           mode=a.mode or h.get("image_mode"), resolution=a.resolution)
             for n, status in res:
                 print(f"{n:02d} {status}")
-            return 1 if any(st.startswith("FAIL") for _, st in res) else 0
+            return 1 if any(st not in ("OK", "exists") for _, st in res) else 0
     except (FileNotFoundError, ValueError, RuntimeError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1

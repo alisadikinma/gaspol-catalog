@@ -35,7 +35,7 @@ class Base(unittest.TestCase):
     def manifest(self, ns=(1, 2), write=True):
         items = []
         for n in ns:
-            items.append({"n": n, "sid": "", "prompt_file": f"prompts/slide-{n:02d}.md", "refs": ["r.png"] if n == 1 else []})
+            items.append({"n": n, "sid": "", "prompt_file": f"slide-{n:02d}.md", "refs": ["r.png"] if n == 1 else []})
             if write:
                 (self.root / "prompts" / f"slide-{n:02d}.md").write_text(f"PROMPT {n}\n", encoding="utf-8")
         p = self.root / "prompts" / "manifest.json"
@@ -55,8 +55,8 @@ class RunTest(Base):
     def test_all_ok_defaults(self):
         res = gen.run(self.manifest(), self.fake(), model="m1", ver="r1")
         self.assertEqual(res, [(1, "OK"), (2, "OK")])
-        self.assertTrue((self.root / "renders" / "01-r1.png").is_file())
-        self.assertTrue((self.root / "renders" / "02-r1.png").is_file())
+        self.assertTrue((self.root / "renders" / "r1" / "01.png").is_file())
+        self.assertTrue((self.root / "renders" / "r1" / "02.png").is_file())
         c = next(x for x in self.calls if x["prompt"].startswith("PROMPT 1"))
         self.assertEqual((c["prompt"].strip(), c["model"], c["aspect"], c["resolution"], c["output_format"]),
                          ("PROMPT 1", "m1", "16:9", "2K", "png"))

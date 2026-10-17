@@ -81,8 +81,10 @@ intent. When they disagree, the note wins and the prompt is regenerated from it 
 prompt edited to match a render that already happened is the pipeline running
 backwards.
 
-Each prompt file ends with a **revision log**: one line per regeneration, what changed
-and which defect forced it. Without that line the same guard gets deleted again next
+Each prompt file ends with a **revision log** (a final `REVISION LOG` heading):
+one line per regeneration, what changed and which defect forced it. `deckkit prompts`
+keeps every existing log line when it rewrites a file and adds a dated line from the
+slide's `log` field. Without that line the same guard gets deleted again next
 month by someone tidying up a long prompt. The
 instructions may be written in English; **every string that will be printed is quoted
 in the deck's own language, character for character.**
@@ -174,7 +176,9 @@ has exceeded 420 seconds and succeeded at 540, and a timed-out render still spen
 its quota.
 
 - **Generator present** → run `deckkit gen prompts/manifest.json --ver rN`; it renders
-  every slide from its prompt file. Then run a first-pass
+  every slide from its prompt file into `renders/rN/NN.png`. A render whose prompt has
+  changed since is reported `stale` and never overwritten: move it to `prompts/_rejected/`
+  or use a new `--ver`. Then run a first-pass
   inspection with a fresh subagent prompted "assume there are issues — find them",
   checking specifically for the seventeen guard classes plus overflow, clipping, and
   garbled glyphs. Regenerate on defect, at most twice, then flag for manual fix.
@@ -254,6 +258,9 @@ slot empty — including every re-render in between.
   render) and the human is asked again.
 - Keep the un-numbered renders. Stamp into a separate output so a later reorder never
   has to paint over an old number.
+- The tools refuse until told: `deckkit stamp SRC DST --approved` and
+  `deckkit band SRC DST --text "..." --numbers --approved`. Pass `--approved` only after
+  the human's explicit word.
 
 ## Revision rounds
 
