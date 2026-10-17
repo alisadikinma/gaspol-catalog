@@ -65,6 +65,8 @@ user — do NOT stub it or fabricate a replacement. Run
 - `b2b-phased-sale.md` — the two deployment models (single-site pilot or simultaneous)
   as a seller decision, client-signed acceptance criteria, consortium SLA shape.
 - `enablement-kit.md` — the five-part sales kit skeleton.
+- `styles/isometrik-terang.md` — style preset (bright isometric): intro, style, guard,
+  palette. Picked by the `preset` key of the seller's house standard.
 - `examples/good-catalog.md` / `examples/bad-catalog.md` — self-test fixtures
   (PASS / BLOCKING).
 
@@ -188,7 +190,7 @@ written yet; a skipped script is never a pass.
 | `research-contract.sh` | buyer research has its six sections and every claim is traceable |
 | `guard-generic.sh` | hard rule 2 — scans `references/` **and** `skills/`, for client names and for hardcoded knowledge-base addresses |
 | `frontmatter.sh` | hard rule 6 |
-| `refs-present.sh` | the seven reference files exist and are not stubs |
+| `refs-present.sh` | the nine reference files exist and are not stubs |
 | `fixture-shape.sh` | the planted defects in the bad fixture are still there |
 
 The fixture verdict itself — bad BLOCKS, good PASSES — cannot be checked by a
@@ -202,4 +204,4 @@ Last ticket: CAT-2
 
 ## Tool-first rule (deckkit)
 
-Post-render deck work (PDF, watermark, numbering, footer band, text patch, logo slots, footer erase) has a library: `tools/deckkit/`, routed in `docs/tool-routing.md`. Use it before writing a script. If nothing fits, add a module to `tools/deckkit/` with a test and a routing row in the same session; never leave a reusable script in a client folder. Keep client names and absolute paths out of `tools/`.
+Deck work (prompt files via `deckkit prompts`, renders via `deckkit gen`, PDF, watermark, numbering, footer band, text patch, logo slots, footer erase) has a library: `tools/deckkit/`, routed in `docs/tool-routing.md`. Use it before writing a script. If nothing fits, add a module to `tools/deckkit/` with a test and a routing row in the same session; never leave a reusable script in a client folder. The seller's identity (logo, watermark, contact, style preset, image client) lives in a house-standard file outside the plugin, found by `--house`, `$GASPOL_CATALOG_HOUSE`, or a `house-standard:` line in `.gaspol/context-sources.md`. Keep client names and absolute paths out of `tools/`.

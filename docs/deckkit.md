@@ -1,12 +1,17 @@
-# deckkit: post-render deck library
+# deckkit: the offer-deck library
 
-Distilled from the deck folders of finished catalogs and pitch decks. Run
+One library for the whole deck pipeline: slide spec -> prompt files -> images ->
+post-render fixes -> PDF. Distilled from the deck folders of finished catalogs and pitch
+decks. Run
 `~/.gaspol-video/venv/bin/python -m tools.deckkit --help` from the plugin root, or import
 `from tools.deckkit import pdf, watermark, stamp, band, patch, slots, erase`. Routing table:
 `docs/tool-routing.md`.
 
 | Module | What |
 |---|---|
+| `house` | `resolve`, `load`, `load_preset`: the seller house standard (outside the plugin, found by `--house`, `$GASPOL_CATALOG_HOUSE`, or a `house-standard:` line in `.gaspol/context-sources.md`) and the style presets in `references/b2b/styles/`. Library only. |
+| `prompts` | `deckkit prompts slides.json --house H`: `slides.json` + preset + house standard -> `prompts/slide-NN.md` with the full guard block, and `prompts/manifest.json` (house `style_refs` first, then slide refs). |
+| `gen` | `deckkit gen prompts/manifest.json --ver rN`: render every manifest slide from its prompt file through the image client named by the house standard (`image_client`) or `$DECKKIT_IMAGE_CLIENT`. Optional; no client means the prompts are the deliverable. |
 | `watermark` | `mark` / `unmark`: tiled diagonal text watermark (or `grid=(cols, rows)` cell-centred text) and corner mark, REVERSIBLE (alpha composite is inverted per pixel). `logo=PATH` tiles a logo at 12% in the page ink instead; logo mode is NOT reversible (`unmark` raises ValueError). Ink white on dark pages, charcoal on light, sampled from the page. |
 | `pdf` | `list_pages`, `build_pdf`: one page size, optional watermark, skip list. Pillow's own writer, no img2pdf. |
 | `pptx` | `build_pptx`: one full-bleed picture per 16:9 slide; optional `transition="fade"`, `jpeg_quality`. |
@@ -26,6 +31,6 @@ Distilled from the deck folders of finished catalogs and pitch decks. Run
 
 Per-slide fixes that hard-code coordinates (recolour one bar set, redraw one timeline, remove one
 flag, rebuild one slide from panels) and prompt builders tied to one deck. The reusable parts of
-them are `patch` and `blend_fill`. Image generation stays in `catalog-visual`.
+them are `patch` and `blend_fill`.
 
 Tests: `tests/py/test_deckkit.py` (run with the venv python; skips without Pillow/numpy).

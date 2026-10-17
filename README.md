@@ -38,6 +38,8 @@ next one:
 Requires `gaspol-pitch` for the review engine, plus 19 sales and strategy skills.
 Run `bash tests/deps-present.sh` to check.
 
+Version 0.9.0.
+
 See `CLAUDE.md` for the rules and `references/b2b/` for the brain.
 
 ## Install
@@ -50,5 +52,9 @@ claude plugin install gaspol-pitch@gaspol-one   # required: the review engine
 
 The [gaspol-one](https://github.com/alisadikinma/gaspol-one) marketplace also carries
 `gaspol-dev` (execution fidelity).
+
+## Changelog
+
+- 0.9.0 — deckkit covers prompts and render, isometrik-terang preset, house standard
 
 MIT.

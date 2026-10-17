@@ -1,7 +1,8 @@
 # Tool routing: reach for the tool, do not rewrite it
 
-Before writing a script that touches a rendered deck (PDF, numbering, watermark, footer, text fix,
-logos), find the task below. Run from the plugin root with the venv python that has Pillow, numpy
+This table covers the whole deck pipeline (prompts -> gen -> post-render -> PDF). Before writing a
+script for any of it (prompt files, renders, PDF, numbering, watermark, footer, text fix, logos),
+find the task below. Run from the plugin root with the venv python that has Pillow, numpy
 and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` needs `python-pptx`,
 `erase-footer` needs `tesseract` on PATH.
 
