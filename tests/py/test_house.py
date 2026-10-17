@@ -140,5 +140,23 @@ class LoadPresetTest(Base):
             house.load_preset("../x")
 
 
+class IsometrikTerangPresetTest(unittest.TestCase):
+    KEYS = {"name", "intro", "style", "guard", "ai_clause", "people_clause_from",
+            "people_clause_to", "text_header", "roles", "palette", "fonts"}
+
+    def test_real_preset_shape(self):
+        p = house.load_preset("isometrik-terang")
+        self.assertTrue(self.KEYS <= set(p), self.KEYS - set(p))
+        self.assertEqual(p["name"], "isometrik-terang")
+        self.assertIn("{seller}", p["guard"])
+        self.assertIn("{seller}", p["intro"])
+        self.assertIn("{ai}", p["guard"])
+        self.assertIn(p["people_clause_from"], p["guard"])
+
+    def test_no_seller_identity(self):
+        f = house.STYLES_DIR / "isometrik-terang.md"
+        self.assertNotIn("indusia", f.read_text(encoding="utf-8").lower())
+
+
 if __name__ == "__main__":
     unittest.main()
