@@ -84,6 +84,12 @@ def main(argv=None):
     s.add_argument("--source", default="#23857f", help="current bar colour")
     s.add_argument("--out", help="output path (default: overwrite IMAGE)")
 
+    s = sub.add_parser("table", help="spec JSON -> drawn comparison table page (exact numbers)")
+    s.add_argument("spec")
+    s.add_argument("out")
+    s.add_argument("--size", default="2752x1536", help="WxH of the page (default 2752x1536)")
+    s.add_argument("--font", help="font file (.ttf/.ttc); default: first system font found")
+
     s = sub.add_parser("prompts", help="slide spec -> prompt files + manifest")
     s.add_argument("spec")
     s.add_argument("--house", help="house standard file (else $GASPOL_CATALOG_HOUSE or .gaspol/context-sources.md)")
@@ -183,6 +189,18 @@ def main(argv=None):
             out = a.out or a.image
             res.save(out)
             print(out)
+        elif a.cmd == "table":
+            import json
+            from . import table
+            try:
+                size = tuple(int(v) for v in a.size.lower().split("x"))
+                assert len(size) == 2
+            except (ValueError, AssertionError):
+                raise ValueError(f"--size needs WxH like 2752x1536, got {a.size!r}") from None
+            with open(a.spec, encoding="utf-8") as fh:
+                spec = json.load(fh)
+            table.render(spec, size=size, font_path=a.font).save(a.out)
+            print(a.out)
         elif a.cmd == "prompts":
             from pathlib import Path
             from . import house, prompts

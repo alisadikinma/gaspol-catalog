@@ -17,6 +17,7 @@ Distilled from the deck folders of finished catalogs and pitch decks. Run
 | `slots` | `find_white_slots`, `find_slots` (white or magenta, quads), `paste_quad` (perspective paste), `fill_slots` (`key`, `mode`): paste real logos into blank white or magenta slots. |
 | `photo` | `cover`, `place`, `circle`: cover-crop a real photo into a rounded box or circle. |
 | `recolour` | `bars`: find thin vertical accent bars right of `x_from`, recolour top to bottom; antialiasing kept. Count mismatch raises. |
+| `table` | `render(spec, size, font_path)`: comparison page drawn with PIL (title, header, rows, optional `good`/`bad` cell marks as soft green / red tints). Font size searched per page; a cell that fits at no size raises `ValueError("cell r,c does not fit")`. Bottom band left empty. |
 
 ## Not folded in
 
