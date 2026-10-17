@@ -60,6 +60,16 @@ plugin; the address is a runtime input and never does. Naming *Obsidian* as one
 possible kind of source is generic, the same way `catalog-visual` names an image MCP.
 Naming *which* vault is identity. `bash tests/guard-generic.sh` enforces the line.
 
+### 0a-bis. Resolve the seller house standard (same order, before brand intake)
+
+Before any brand intake question, look for the seller's house-standard file with the
+resolution order above: a path named in this session, then `$GASPOL_CATALOG_HOUSE`,
+then a `house-standard:` line in the nearest `.gaspol/context-sources.md`, then nothing.
+If found, pre-fill `brand.md` from it with `[from: house-standard]` provenance and ask
+only the client-specific items: client name, client logo, client colours. See
+`b2b-brand-intake.md`, "Seller house standard". Nothing found → say so in one line and
+ask the full brand intake.
+
 ### 0b. Search it — targeted, never read-all
 
 Search **per interview topic**, not by reading the whole knowledge base. One query per

@@ -62,7 +62,16 @@ design skill beats a plugin default, in that order, always.
 
 ## Step 1 — author one prompt per slide
 
-For EVERY slide in `deck.md`, write `prompts/slide-NN.md` in six sections.
+**Tooling first.** Do not hand-write prompt files. Write the project's `slides.json`
+(audience, client, ref_dir, and per slide: n, sid, layout, visual, text lines, refs, ai,
+people, extra), then run `deckkit prompts slides.json`. It writes `prompts/slide-NN.md`
+and `prompts/manifest.json`, with the preset's style and the full guard block in every
+file. The preset comes from the seller's house standard (see `b2b-brand-intake.md`,
+"Seller house standard"), resolved through `brand.md`. No house standard resolved →
+say so in the run output and fall back to the theming in `b2b-visual-contract.md`.
+Command forms and options: `docs/deckkit.md` and `docs/tool-routing.md`.
+
+For EVERY slide in `deck.md`, the resulting `prompts/slide-NN.md` carries six sections.
 
 **Two documents, one direction.** `deck.md` may carry a short visual note per slide —
 the design intent, written in the deck's language, for a human to argue with.
@@ -72,9 +81,12 @@ intent. When they disagree, the note wins and the prompt is regenerated from it 
 prompt edited to match a render that already happened is the pipeline running
 backwards.
 
-Each prompt file ends with a **revision log**: one line per regeneration, what changed
-and which defect forced it. Without that line the same guard gets deleted again next
-month by someone tidying up a long prompt. The
+Each prompt file ends with a **revision log** (a final `REVISION LOG` heading):
+one line per regeneration, what changed and which defect forced it. `deckkit prompts`
+keeps every existing log line when it rewrites a file and adds a dated line from the
+slide's `log` field. Without that line the same guard gets deleted again next
+month by someone tidying up a long prompt. `deckkit gen` never sends the log to the
+image model: it names old defect text, which the model could print. The
 instructions may be written in English; **every string that will be printed is quoted
 in the deck's own language, character for character.**
 
@@ -164,21 +176,28 @@ one. **Raise the poll timeout before rendering, not after a failure** — a dens
 has exceeded 420 seconds and succeeded at 540, and a timed-out render still spends
 its quota.
 
-- **Generator present** → generate `slide-NN.png` per prompt. Then run a first-pass
+- **Generator present** → run `deckkit gen prompts/manifest.json --ver rN`; it renders
+  every slide from its prompt file into `renders/rN/NN.png`. A render whose prompt has
+  changed since is reported `stale` and never overwritten: move it to `prompts/_rejected/`
+  or use a new `--ver`. Then run a first-pass
   inspection with a fresh subagent prompted "assume there are issues — find them",
   checking specifically for the seventeen guard classes plus overflow, clipping, and
   garbled glyphs. Regenerate on defect, at most twice, then flag for manual fix.
   **Move every rejected render to `prompts/_rejected/` with a filename saying what
   was wrong** — never overwrite it. Without the rejected file, the same defect gets
   re-argued at the next revision.
-- **Generator absent** → note "no image generator, paste each prompt manually" at the
-  top of `prompts/` and stop after the prompts. **This is not a failure.** The prompts
+- **Generator absent, or no client configured** → note "no image generator, paste each
+  prompt manually" at the top of `prompts/` and stop after the prompts. Rendering stays
+  optional and the layer-two verdict is `NOT RUN`. **This is not a failure.** The prompts
   are the deliverable and `catalog-gate` layer two will correctly report `NOT RUN`.
 
 This first pass is **not** the gate. It catches gross breakage cheaply. The gate still
 runs, in full, afterwards.
 
 ## Step 3 — assemble what the model must not draw
+
+Every post-render step has a tool. Find the task in `docs/tool-routing.md` before
+writing any script; the page number and band steps below still wait for Step 5.
 
 Three things are composited after rendering, never generated. Anything pasted **inside
 the scene** (a logo on a monitor, a vehicle side, an app header; a face photo in a
@@ -240,6 +259,9 @@ slot empty — including every re-render in between.
   render) and the human is asked again.
 - Keep the un-numbered renders. Stamp into a separate output so a later reorder never
   has to paint over an old number.
+- The tools refuse until told: `deckkit stamp SRC DST --approved` and
+  `deckkit band SRC DST --text "..." --numbers --approved`. Pass `--approved` only after
+  the human's explicit word.
 
 ## Revision rounds
 
@@ -254,6 +276,8 @@ own name, and what "done" means.
 
 ```
 prompts/
+  slides.json           the deck spec, input of `deckkit prompts`
+  manifest.json         slide, prompt file and refs, input of `deckkit gen`
   slide-NN.md           one per slide, six sections, full guard block, revision log
   README.md             generator present/absent · house standard or fallback theming
   slide-NN.png          only if an image generator rendered them

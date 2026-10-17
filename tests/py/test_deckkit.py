@@ -1,0 +1,618 @@
+import tempfile
+import unittest
+from pathlib import Path
+
+try:
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    raise unittest.SkipTest('needs Pillow + numpy: use the gaspol-video venv python')
+
+from tools.deckkit import band, fonts, patch, pdf, slots, stamp, watermark
+
+
+def page(size=(600, 340), colour=(240, 240, 240)):
+    im = Image.new("RGB", size, colour)
+    d = ImageDraw.Draw(im)
+    for i in range(0, size[0], 40):
+        d.line([(i, 0), (i, size[1])], fill=(200, 210, 230), width=3)
+    return im
+
+
+class WatermarkTest(unittest.TestCase):
+    def test_mark_changes_pixels_and_picks_ink_by_page_darkness(self):
+        light, dark = page(), page(colour=(20, 24, 40))
+        for im in (light, dark):
+            out = watermark.mark(im, text="DECK")
+            self.assertGreater(np.abs(np.asarray(out).astype(int) - np.asarray(im).astype(int)).max(), 5)
+        # watermark on a light page darkens, on a dark page lightens
+        self.assertLess(np.asarray(watermark.mark(light, text="DECK")).mean(), np.asarray(light).mean())
+        self.assertGreater(np.asarray(watermark.mark(dark, text="DECK")).mean(), np.asarray(dark).mean())
+
+    def test_unmark_restores_original_within_rounding(self):
+        for im in (page(), page(colour=(20, 24, 40))):
+            marked = watermark.mark(im, text="DECK", corner_text="CONFIDENTIAL")
+            back = watermark.unmark(marked, text="DECK", corner_text="CONFIDENTIAL", dark=watermark.is_dark(im))
+            err = np.abs(np.asarray(back).astype(int) - np.asarray(im).astype(int))
+            self.assertLessEqual(err.max(), 3)
+
+
+class PdfTest(unittest.TestCase):
+    def test_pdf_scales_pages_and_skips(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            page((600, 340)).save(t / "01.png")
+            page((300, 170)).save(t / "02.png")
+            page((300, 170)).save(t / "03.png")
+            pages = pdf.list_pages(t, skip=["03.png"])
+            self.assertEqual([Path(p).name for p in pages], ["01.png", "02.png"])
+            n = pdf.build_pdf(pages, t / "o.pdf", page_size=(400, 226), mark_opts={"text": "X"})
+            self.assertEqual(n, 2)
+            self.assertTrue((t / "o.pdf").read_bytes().startswith(b"%PDF"))
+
+    def test_list_pages_empty_raises(self):
+        with tempfile.TemporaryDirectory() as t:
+            with self.assertRaises(FileNotFoundError):
+                pdf.list_pages(t)
+
+
+class StampBandPatchTest(unittest.TestCase):
+    def test_stamp_uses_filename_number_and_wordmark(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            src, dst = t / "s", t / "d"
+            src.mkdir()
+            im = page()
+            ImageDraw.Draw(im).rectangle((0, int(340 * 0.94), 600, 340), fill=(20, 30, 60))
+            im.save(src / "07.png")
+            Image.new("RGBA", (80, 20), (10, 10, 10, 255)).save(t / "wm.png")
+            self.assertEqual(stamp.stamp_dir(src, dst, t / "wm.png"), ["07.png"])
+            out = np.asarray(Image.open(dst / "07.png"))
+            band_region = out[int(340 * 0.95):, int(600 * 0.93):]
+            self.assertGreater((band_region.min(2) > 200).sum(), 0, "numeral drawn white on the band")
+
+    def test_add_band_grows_page(self):
+        logo = Image.new("RGBA", (100, 40), (200, 0, 0, 255))
+        out = band.add_band(page(), "CONFIDENTIAL", [logo, logo])
+        self.assertEqual(out.width, 600)
+        self.assertEqual(out.height, 340 + int(600 * 0.055))
+
+    def test_blend_fill_hides_a_mark_on_a_gradient(self):
+        g = np.tile(np.linspace(40, 200, 200, dtype=np.uint8), (100, 1))
+        img = Image.fromarray(np.dstack([g, g, g]))
+        before = np.asarray(img).copy()
+        ImageDraw.Draw(img).rectangle((90, 40, 110, 60), fill=(255, 0, 0))
+        patch.blend_fill(img, (90, 40, 111, 61))
+        err = np.abs(np.asarray(img).astype(int) - before.astype(int))[40:61, 90:111]
+        self.assertLess(err.mean(), 6)
+
+    def test_ink_bbox(self):
+        im = Image.new("RGB", (100, 100), (255, 255, 255))
+        ImageDraw.Draw(im).rectangle((20, 30, 40, 50), fill=(0, 0, 0))
+        self.assertEqual(patch.ink_bbox(im, (0, 0, 100, 100)), (20, 30, 40, 50))
+        self.assertIsNone(patch.ink_bbox(Image.new("RGB", (50, 50), (255, 255, 255)), (0, 0, 50, 50)))
+
+
+try:
+    import cv2  # noqa: F401
+    HAVE_CV = True
+except ImportError:
+    HAVE_CV = False
+
+
+@unittest.skipUnless(HAVE_CV, "cv2 not importable (use the gaspol-video venv python)")
+class SlotsTest(unittest.TestCase):
+    def test_fill_slots_left_to_right_and_count_mismatch(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            im = Image.new("RGB", (900, 300), (20, 40, 80))
+            d = ImageDraw.Draw(im)
+            for x in (50, 350, 650):
+                d.rectangle((x, 50, x + 200, 250), fill=(255, 255, 255))
+            for i, c in enumerate([(255, 0, 0), (0, 255, 0), (0, 0, 255)]):
+                Image.new("RGBA", (100, 40), c + (255,)).save(t / f"l{i}.png")
+            logos = [t / f"l{i}.png" for i in range(3)]
+            with self.assertRaises(ValueError):
+                slots.fill_slots(im.copy(), logos[:2])
+            im, used = slots.fill_slots(im, logos)
+            self.assertEqual([u[0] for u in used], sorted(u[0] for u in used))
+            self.assertEqual(im.getpixel((150, 150)), (255, 0, 0))
+            self.assertEqual(im.getpixel((750, 150)), (0, 0, 255))
+
+
+def _quiet_cli(argv):
+    import contextlib
+    import io
+    from tools.deckkit import __main__ as cli
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        return cli.main(argv)
+
+
+MAGENTA = (255, 0, 255)
+
+
+def _magenta_page(polys, size=(900, 400)):
+    im = Image.new("RGB", size, (20, 40, 80))
+    d = ImageDraw.Draw(im)
+    for poly in polys:
+        d.polygon(poly, fill=MAGENTA)
+    return im
+
+
+@unittest.skipUnless(HAVE_CV, "cv2 not importable (use the gaspol-video venv python)")
+class QuadSlotsTest(unittest.TestCase):
+    PARA = [(100, 80), (400, 100), (380, 300), (80, 280)]
+
+    def test_find_slots_magenta_corners(self):
+        quads = slots.find_slots(_magenta_page([self.PARA]), key="magenta")
+        self.assertEqual(len(quads), 1)
+        for got, want in zip(quads[0], self.PARA):
+            self.assertLessEqual(abs(got[0] - want[0]), 3)
+            self.assertLessEqual(abs(got[1] - want[1]), 3)
+
+    def test_two_slots_sorted_left_to_right(self):
+        right = [(600, 80), (800, 80), (800, 300), (600, 300)]
+        quads = slots.find_slots(_magenta_page([right, self.PARA]), key="magenta")
+        self.assertEqual(len(quads), 2)
+        self.assertLess(quads[0][0][0], quads[1][0][0])
+
+    def test_paste_quad_leaves_no_magenta(self):
+        im = _magenta_page([self.PARA])
+        quad = slots.find_slots(im, key="magenta")[0]
+        logo = Image.new("RGBA", (120, 40), (255, 255, 255, 255))
+        for plate in (None, (10, 10, 10)):
+            out = slots.paste_quad(im, logo, quad, plate=plate)
+            xs = [p[0] for p in quad]
+            ys = [p[1] for p in quad]
+            a = np.asarray(out.convert("RGB"))[min(ys):max(ys) + 1, min(xs):max(xs) + 1].astype(int)
+            dist = np.sqrt(((a - np.array(MAGENTA)) ** 2).sum(2))
+            self.assertGreaterEqual(dist.min(), 40)
+        self.assertEqual(out.getpixel((240, 190)), (255, 255, 255))
+        self.assertEqual(im.getpixel((240, 190)), MAGENTA)
+
+    def test_white_key_matches_find_white_slots(self):
+        im = Image.new("RGB", (900, 300), (20, 40, 80))
+        d = ImageDraw.Draw(im)
+        for x in (50, 350, 650):
+            d.rectangle((x, 50, x + 200, 250), fill=(255, 255, 255))
+        boxes = slots.find_white_slots(im, 0.002)
+        quads = slots.find_slots(im, key="white")
+        self.assertEqual([(q[0][0], q[0][1], q[2][0] - q[0][0] + 1, q[2][1] - q[0][1] + 1) for q in quads], boxes)
+
+    def test_fill_slots_quad_count_mismatch(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.png"
+            Image.new("RGBA", (50, 20), (255, 0, 0, 255)).save(p)
+            with self.assertRaisesRegex(ValueError, "found 1 slots, got 2 logos"):
+                slots.fill_slots(_magenta_page([self.PARA]), [p, p], key="magenta", mode="quad")
+
+    def test_cli_magenta_quad(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            _magenta_page([self.PARA]).save(t / "p.png")
+            Image.new("RGBA", (120, 40), (255, 0, 0, 255)).save(t / "l.png")
+            rc = _quiet_cli(["logo-slots", str(t / "p.png"), str(t / "l.png"), "--key", "magenta", "--mode", "quad"])
+            self.assertEqual(rc, 0)
+            self.assertEqual(Image.open(t / "p.png").convert("RGB").getpixel((240, 190)), (255, 0, 0))
+
+
+class SilentFailureWatermarkTest(unittest.TestCase):
+    def test_mark_rejects_unknown_option(self):
+        with self.assertRaisesRegex(TypeError, r"unknown watermark option\(s\): \['txt'\]"):
+            watermark.mark(page(), txt="X")
+
+    def test_unmark_rejects_unknown_option(self):
+        with self.assertRaisesRegex(TypeError, "unknown watermark option"):
+            watermark.unmark(page(), opacitiy=3)
+
+    def test_grid_without_text_raises(self):
+        with self.assertRaisesRegex(ValueError, "grid needs"):
+            watermark.mark(page(), text="", grid=(2, 2))
+
+    def test_logo_with_text_or_grid_raises(self):
+        with self.assertRaisesRegex(ValueError, "logo watermark cannot be combined with text/grid"):
+            watermark.mark(page(), logo="x.png", text="DECK")
+        with self.assertRaisesRegex(ValueError, "logo watermark cannot be combined with text/grid"):
+            watermark.mark(page(), logo="x.png", text="", grid=(2, 2))
+
+    def test_cli_grid_without_watermark_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            t = Path(d)
+            src = t / "src"
+            src.mkdir()
+            page().save(src / "01.png")
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(t / "o.pdf"), "--grid", "3x4", "--corner", "C"]), 1)
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(t / "o.pdf"), "--grid", "3x4"]), 1)
+            page().save(t / "m.png")
+            self.assertEqual(_quiet_cli(["unmark", str(t / "m.png"), str(t / "u.png"), "--watermark", "", "--grid", "3x4"]), 1)
+
+    def test_cli_logo_with_text_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            t = Path(d)
+            src = t / "src"
+            src.mkdir()
+            page().save(src / "01.png")
+            Image.new("RGBA", (40, 20), (0, 0, 0, 255)).save(t / "l.png")
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(t / "o.pdf"), "--watermark", "X",
+                                         "--watermark-logo", str(t / "l.png")]), 1)
+
+
+class SilentFailureFontTest(unittest.TestCase):
+    def test_explicit_missing_font_raises(self):
+        with self.assertRaises(FileNotFoundError):
+            fonts.load_font(20, "/nonexistent/none.ttf")
+        with self.assertRaises(FileNotFoundError):
+            fonts.find_font("/nonexistent/none.ttf")
+
+    def test_explicit_unopenable_font_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            bad = Path(d) / "bad.ttf"
+            bad.write_text("not a font")
+            with self.assertRaises(FileNotFoundError):
+                fonts.load_font(20, str(bad))
+            with self.assertRaises(FileNotFoundError):
+                fonts.find_font(str(bad))
+
+    def test_no_path_still_falls_back(self):
+        self.assertIsNotNone(fonts.load_font(20))
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class ReplaceLineTest(unittest.TestCase):
+    INK = (20, 30, 90)
+
+    def setUp(self):
+        self.font = fonts.find_font()
+        self.bg = (235, 240, 245)
+        self.img = Image.new("RGB", (500, 200), self.bg)
+        self.box = (40, 60, 440, 120)
+        old = patch.render_text("OLD TITLE HERE", self.font, 30, self.INK + (255,))
+        patch.paste_text(self.img, old, (60, 100))
+        self.old_bbox = patch.ink_bbox(self.img, self.box)
+
+    def test_replaces_with_same_cap_height_and_ink_colour(self):
+        out = patch.replace_line(self.img, self.box, "NEW LINE", self.font)
+        new = patch.ink_bbox(out, self.box)
+        self.assertIsNotNone(new)
+        self.assertLessEqual(abs((new[3] - new[1]) - (self.old_bbox[3] - self.old_bbox[1])), 1)
+        a = np.asarray(out).astype(int)
+        sub = a[self.box[1]:self.box[3], self.box[0]:self.box[2]]
+        # nothing darker than background outside the new glyph bbox
+        mask = np.ones(sub.shape[:2], bool)
+        mask[new[1] - self.box[1] - 2:new[3] - self.box[1] + 3, new[0] - self.box[0] - 2:new[2] - self.box[0] + 3] = False
+        self.assertLess(np.abs(sub[mask] - np.array(self.bg)).max(), 3)
+        darkest = sub.reshape(-1, 3)[sub.sum(axis=2).argmin()]
+        self.assertLess(np.abs(darkest - np.array(self.INK)).max(), 25)
+        # input untouched
+        self.assertEqual(patch.ink_bbox(self.img, self.box), self.old_bbox)
+
+    def test_explicit_fill_wins(self):
+        out = patch.replace_line(self.img, self.box, "NEW", self.font, fill=(200, 0, 0))
+        a = np.asarray(out).astype(int)[self.box[1]:self.box[3], self.box[0]:self.box[2]]
+        self.assertGreater(a[..., 0].max() - a[..., 2].min(), 100)
+
+    def test_too_wide_raises_and_squeeze_rescues_slight_overflow(self):
+        with self.assertRaisesRegex(ValueError, "text wider than box"):
+            patch.replace_line(self.img, self.box, "X" * 60, self.font)
+        size = patch.size_for_cap(self.font, self.old_bbox[3] - self.old_bbox[1] + 1)
+        f = ImageFont.truetype(self.font, size)
+        avail = self.box[2] - self.box[0]
+        text = "W"
+        while f.getlength(text + "W") < avail:
+            text += "W"
+        while f.getlength(text) <= avail + 2:
+            text += "i"
+        n = len(text)
+        w0 = f.getlength(text)
+        self.assertLess(w0 - avail, 0.04 * size * (n - 1) - 2)
+        with self.assertRaises(ValueError):
+            patch.replace_line(self.img, self.box, text, self.font)
+        out = patch.replace_line(self.img, self.box, text, self.font, squeeze=True)
+        new = patch.ink_bbox(out, self.box)
+        self.assertGreaterEqual(new[0], self.box[0])
+        self.assertLessEqual(new[2], self.box[2])
+        with self.assertRaises(ValueError):
+            patch.replace_line(self.img, self.box, "X" * 60, self.font, squeeze=True)
+
+    def test_no_ink_raises(self):
+        with self.assertRaisesRegex(ValueError, "no ink in box"):
+            patch.replace_line(self.img, (40, 140, 440, 190), "A", self.font)
+
+    def test_align_right_keeps_right_edge(self):
+        out = patch.replace_line(self.img, self.box, "SHORT", self.font, align="right")
+        new = patch.ink_bbox(out, self.box)
+        self.assertLessEqual(abs(new[2] - self.old_bbox[2]), 3)
+
+
+class FillHelpersTest(unittest.TestCase):
+    def test_lerp_fill_reproduces_horizontal_gradient(self):
+        w, h = 300, 80
+        ramp = np.linspace(40, 220, w)
+        arr = np.tile(ramp[None, :, None], (h, 1, 3)).astype(np.uint8)
+        img = Image.fromarray(arr)
+        d = ImageDraw.Draw(img)
+        d.rectangle((100, 20, 200, 60), fill=(0, 0, 0))
+        out = patch.lerp_fill(img, (100, 20, 201, 61))
+        err = np.abs(np.asarray(out).astype(int) - arr.astype(int))[20:61, 100:201]
+        self.assertLess(err.max(), 8)
+
+    def test_erase_between_flat_bg(self):
+        img = Image.new("RGB", (100, 50), (10, 10, 10))
+        out = patch.erase_between(img, (20, 10, 60, 30), bg=(200, 100, 50))
+        self.assertEqual(out.getpixel((30, 20)), (200, 100, 50))
+        self.assertEqual(out.getpixel((70, 20)), (10, 10, 10))
+
+    def test_size_for_cap_monotonic_and_baseline(self):
+        font = fonts.find_font()
+        sizes = [patch.size_for_cap(font, c) for c in range(8, 60, 4)]
+        self.assertEqual(sizes, sorted(sizes))
+        self.assertGreater(sizes[-1], sizes[0])
+        s = patch.size_for_cap(font, 30)
+        b = patch.baseline_for_top(font, s, 100)
+        self.assertLessEqual(abs((b - 100) - 30), 1)
+
+
+def _logo_png(path):
+    lg = Image.new("RGBA", (80, 40), (0, 0, 0, 0))
+    ImageDraw.Draw(lg).rectangle([4, 4, 75, 35], fill=(10, 90, 160, 255))
+    lg.save(path)
+
+
+class WatermarkLogoGridTest(unittest.TestCase):
+    def test_logo_mode_marks_several_separated_regions(self):
+        with tempfile.TemporaryDirectory() as t:
+            lp = Path(t) / "logo.png"
+            _logo_png(lp)
+            im = page((900, 600))
+            out = watermark.mark(im, logo=str(lp), text="", corner_text="")
+        diff = np.abs(np.asarray(out).astype(int) - np.asarray(im).astype(int)).max(axis=2) > 2
+        self.assertGreater(diff.sum(), 0)
+        # count blobs by coarse 150px cells that hold changes, then require spread
+        cells = {(y // 150, x // 150) for y, x in zip(*np.nonzero(diff))}
+        self.assertGreaterEqual(len(cells), 3)
+
+    def test_grid_round_trip_light_and_dark(self):
+        for im in (page(), page(colour=(20, 24, 40))):
+            marked = watermark.mark(im, text="DECK", corner_text="", grid=(3, 4))
+            self.assertGreater(np.abs(np.asarray(marked).astype(int) - np.asarray(im).astype(int)).max(), 5)
+            back = watermark.unmark(marked, text="DECK", corner_text="", grid=(3, 4), dark=watermark.is_dark(im))
+            err = np.abs(np.asarray(back).astype(int) - np.asarray(im).astype(int))
+            self.assertLessEqual(err.max(), 2)
+
+    def test_grid_places_text_in_every_cell(self):
+        im = page((600, 800), (240, 240, 240))
+        out = watermark.mark(im, text="DECK", corner_text="", grid=(3, 4))
+        diff = np.abs(np.asarray(out).astype(int) - np.asarray(im).astype(int)).max(axis=2) > 2
+        for r in range(4):
+            for c in range(3):
+                self.assertTrue(diff[r * 200:(r + 1) * 200, c * 200:(c + 1) * 200].any(), (r, c))
+
+    def test_logo_unmark_refused(self):
+        with self.assertRaisesRegex(ValueError, "logo watermark is not reversible"):
+            watermark.unmark(page(), logo="x.png")
+
+    def test_cli_pdf_with_watermark_logo(self):
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "pages"
+            src.mkdir()
+            page((400, 300)).save(src / "01.png")
+            lp = Path(t) / "logo.png"
+            _logo_png(lp)
+            out = Path(t) / "o.pdf"
+            rc = _quiet_cli(["pdf", str(src), str(out), "--watermark-logo", str(lp)])
+            self.assertEqual(rc, 0)
+            self.assertTrue(out.read_bytes().startswith(b"%PDF"))
+
+    def test_cli_pdf_grid_flag(self):
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "pages"
+            src.mkdir()
+            page((400, 300)).save(src / "01.png")
+            out = Path(t) / "o.pdf"
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(out), "--watermark", "X", "--grid", "3x4"]), 0)
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(out), "--watermark", "X", "--grid", "bad"]), 1)
+
+
+def _ink_count(im, box, bg=(255, 255, 255)):
+    arr = np.asarray(im.convert("RGB").crop(box)).astype(int)
+    return int((np.abs(arr - np.array(bg)).sum(2) > 60).sum())
+
+
+class BandOptionsTest(unittest.TestCase):
+    def test_url_adds_ink_under_logo_and_grows_page(self):
+        logo = Image.new("RGBA", (100, 40), (200, 0, 0, 255))
+        plain = band.add_band(page((1000, 500)), "RAHASIA")
+        with_url = band.add_band(page((1000, 500)), "RAHASIA", [logo], url="contoh.ai")
+        b = int(1000 * 0.055)
+        self.assertEqual(with_url.size, (1000, 500 + b))
+        box = (800, 500 + int(b * 0.7), 1000, 500 + b)
+        self.assertEqual(_ink_count(plain, box), 0)
+        self.assertGreater(_ink_count(with_url, box), 0)
+
+    def test_fit_canvas_letterboxes_before_band(self):
+        out = band.add_band(Image.new("RGB", (900, 400), (10, 20, 30)), "X", fit_canvas=(1920, 1080))
+        self.assertEqual(out.width, 1920)
+        self.assertEqual(out.height, 1080 + int(1920 * 0.055))
+        self.assertEqual(out.getpixel((5, 5)), (10, 20, 30))
+
+    def test_number_drawn_right_end_only_when_given(self):
+        w, h = 1000, 500
+        b = int(w * 0.055)
+        box = (int(w * 0.9), h + 2, w, h + b)
+        without = band.add_band(page((w, h)), "X")
+        with_n = band.add_band(page((w, h)), "X", number=3, total=10)
+        self.assertEqual(_ink_count(without, box), 0)
+        self.assertGreater(_ink_count(with_n, box), 0)
+
+    def test_number_fmt(self):
+        w, h = 1000, 500
+        b = int(w * 0.055)
+        box = (int(w * 0.8), h + 2, w, h + b)
+        a = band.add_band(page((w, h)), "X", number=3, total=10)
+        c = band.add_band(page((w, h)), "X", number=3, total=10, number_fmt="halaman {n} dari {total}")
+        self.assertGreater(_ink_count(c, box), _ink_count(a, box))
+
+    def test_cli_band_options(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            src, dst = t / "s", t / "d"
+            src.mkdir()
+            for n in ("01", "02"):
+                page((400, 300)).save(src / f"{n}.png")
+            rc = _quiet_cli(["band", str(src), str(dst), "--text", "X", "--url", "contoh.ai", "--numbers", "--approved",
+                             "--number-fmt", "{n}/{total}", "--fit-canvas", "800x450"])
+            self.assertEqual(rc, 0)
+            self.assertEqual(Image.open(dst / "02.png").size, (800, 450 + int(800 * 0.055)))
+            self.assertEqual(_quiet_cli(["band", str(src), str(dst), "--text", "X", "--fit-canvas", "bad"]), 1)
+
+
+try:
+    import pptx as _pptx  # noqa: F401
+    HAVE_PPTX = True
+except ImportError:
+    HAVE_PPTX = False
+
+
+@unittest.skipUnless(HAVE_PPTX, "python-pptx not importable (use the gaspol-video venv python)")
+class PptxOptionsTest(unittest.TestCase):
+    def _imgs(self, t, n=2):
+        paths = []
+        for i in range(n):
+            p = Path(t) / f"{i + 1:02d}.png"
+            page((400, 225)).save(p)
+            paths.append(p)
+        return paths
+
+    def _zip(self, out):
+        import zipfile
+        return zipfile.ZipFile(out)
+
+    def test_fade_transition_in_slide_xml(self):
+        from tools.deckkit import pptx as dk
+        with tempfile.TemporaryDirectory() as t:
+            out = Path(t) / "o.pptx"
+            self.assertEqual(dk.build_pptx(self._imgs(t), out, transition="fade"), 2)
+            z = self._zip(out)
+            xml = z.read("ppt/slides/slide1.xml").decode()
+            self.assertIn("<p:transition", xml)
+            self.assertIn("<p:fade", xml)
+            plain = Path(t) / "p.pptx"
+            dk.build_pptx(self._imgs(t), plain)
+            self.assertNotIn("<p:transition", self._zip(plain).read("ppt/slides/slide1.xml").decode())
+
+    def test_bad_transition_raises(self):
+        from tools.deckkit import pptx as dk
+        with tempfile.TemporaryDirectory() as t:
+            with self.assertRaises(ValueError):
+                dk.build_pptx(self._imgs(t), Path(t) / "o.pptx", transition="wipe")
+
+    def test_jpeg_quality_stores_jpeg(self):
+        from tools.deckkit import pptx as dk
+        with tempfile.TemporaryDirectory() as t:
+            out = Path(t) / "o.pptx"
+            dk.build_pptx(self._imgs(t), out, jpeg_quality=92)
+            media = [n for n in self._zip(out).namelist() if n.startswith("ppt/media/")]
+            self.assertTrue(media)
+            self.assertTrue(all(n.lower().endswith((".jpg", ".jpeg")) for n in media), media)
+
+    def test_cli_pptx_options(self):
+        with tempfile.TemporaryDirectory() as t:
+            out = Path(t) / "o.pptx"
+            rc = _quiet_cli(["pptx", str(out), *map(str, self._imgs(t)), "--transition", "fade", "--jpeg-quality", "90"])
+            self.assertEqual(rc, 0)
+            self.assertIn("<p:fade", self._zip(out).read("ppt/slides/slide1.xml").decode())
+
+
+class EmblemFillSideTest(unittest.TestCase):
+    def setUp(self):
+        self.font = fonts.find_font()
+
+    def test_emblem_text_round_glow_lettering(self):
+        em = patch.emblem_text("MONI", self.font, 40, (255, 255, 255), (0, 160, 255), ring=(0, 200, 255))
+        self.assertEqual(em.mode, "RGBA")
+        self.assertEqual(em.width, em.height)
+        a = np.asarray(em)
+        self.assertEqual(a[0, 0, 3], 0)  # corner outside the circle is transparent
+        c = em.width // 2
+        self.assertGreater(a[c - 40:c + 40, c - 40:c + 40, 3].max(), 200)  # lettering inside
+        self.assertTrue((a[..., 3] > 200).any())
+
+    def test_emblem_text_ring_optional_and_rejects_bad_font(self):
+        plain = patch.emblem_text("M", self.font, 30, (255, 255, 255), (0, 160, 255))
+        ringed = patch.emblem_text("M", self.font, 30, (255, 255, 255), (0, 160, 255), ring=(255, 0, 0))
+        self.assertNotEqual(np.asarray(plain).tobytes(), np.asarray(ringed).tobytes())
+        with self.assertRaises(FileNotFoundError):
+            patch.emblem_text("M", "/nonexistent/none.ttf", 30, (255, 255, 255), (0, 160, 255))
+
+    def test_fill_from_side_each_side(self):
+        for side, probe, src in (("left", (50, 40), (25, 40)), ("right", (50, 40), (75, 40)),
+                                 ("top", (50, 40), (50, 15)), ("bottom", (50, 40), (50, 65))):
+            im = Image.new("RGB", (100, 80), (0, 0, 0))
+            d = ImageDraw.Draw(im)
+            for i in range(100):
+                d.line([(i, 0), (i, 79)], fill=(i, 100, 0))   # horizontal gradient
+            for j in range(80):
+                if side in ("top", "bottom"):
+                    d.line([(0, j), (99, j)], fill=(j * 3, 0, 50))
+            box = (30, 20, 70, 60)
+            ref = im.getpixel({"left": (29, 40), "right": (70, 40), "top": (50, 19), "bottom": (50, 60)}[side])
+            out = patch.fill_from_side(im, box, side)
+            self.assertIs(out, im)
+            self.assertEqual(im.getpixel(probe), ref)
+
+    def test_fill_from_side_errors(self):
+        im = Image.new("RGB", (100, 80))
+        with self.assertRaisesRegex(ValueError, "side"):
+            patch.fill_from_side(im, (30, 20, 70, 60), "middle")
+        with self.assertRaisesRegex(ValueError, "no pixels"):
+            patch.fill_from_side(im, (0, 20, 40, 60), "left")
+
+
+@unittest.skipUnless(HAVE_CV, "cv2 not importable (use the gaspol-video venv python)")
+class PixelSlotsTest(unittest.TestCase):
+    RECT = [(100, 80), (400, 80), (400, 300), (100, 300)]
+    OCC = (150, 150, 200, 250)
+    OCC_COLOUR = (10, 200, 10)
+
+    def _page(self):
+        im = _magenta_page([self.RECT])
+        ImageDraw.Draw(im).rectangle(self.OCC, fill=self.OCC_COLOUR)
+        return im
+
+    def test_occluder_stays_in_front_of_logo(self):
+        im = self._page()
+        quad = slots.find_slots(im, key="magenta")[0]
+        logo = Image.new("RGBA", (300, 220), (255, 255, 255, 255))
+        out = slots.paste_quad(im, logo, quad, mode="pixel", fit=1.0)
+        self.assertEqual(out.getpixel((175, 200)), self.OCC_COLOUR)   # occluder kept
+        self.assertEqual(out.getpixel((300, 190)), (255, 255, 255))  # logo shows elsewhere
+        flat = slots.paste_quad(im, logo, quad, fit=1.0)
+        self.assertEqual(flat.getpixel((175, 200)), (255, 255, 255))  # flat mode covers it
+
+    def test_fill_slots_pixel_requires_magenta(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.png"
+            Image.new("RGBA", (50, 20), (255, 0, 0, 255)).save(p)
+            with self.assertRaisesRegex(ValueError, "magenta"):
+                slots.fill_slots(self._page(), [p], key="white", mode="pixel")
+            out, quads = slots.fill_slots(self._page(), [p], key="magenta", mode="pixel")
+            self.assertEqual(len(quads), 1)
+            self.assertEqual(out.getpixel((175, 200)), self.OCC_COLOUR)
+
+    def test_paste_quad_bad_mode(self):
+        im = self._page()
+        quad = slots.find_slots(im, key="magenta")[0]
+        with self.assertRaisesRegex(ValueError, "mode"):
+            slots.paste_quad(im, Image.new("RGBA", (5, 5)), quad, mode="nope")
+
+    def test_cli_pixel_mode(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            self._page().save(t / "p.png")
+            Image.new("RGBA", (300, 220), (255, 0, 0, 255)).save(t / "l.png")
+            rc = _quiet_cli(["logo-slots", str(t / "p.png"), str(t / "l.png"), "--key", "magenta", "--mode", "pixel"])
+            self.assertEqual(rc, 0)
+            self.assertEqual(Image.open(t / "p.png").convert("RGB").getpixel((175, 200)), self.OCC_COLOUR)

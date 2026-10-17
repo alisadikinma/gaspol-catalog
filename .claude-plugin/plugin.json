@@ -1,7 +1,7 @@
 {
   "name": "gaspol-catalog",
   "description": "Orchestrates B2B sales catalog and offer-deck creation for operations buyers, not investors: read the user's own knowledge base first and interview only the gaps, then storyline, then master catalog once, per-prospect variant many times, and a two-layer blocking gate that reviews the text AND the rendered image, plus a visual phase that authors the render prompts and a finish phase that writes what was learned back, so each deal starts further along than the last. Inherits the adversarial review engine from gaspol-pitch and swaps the rubric.",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "author": { "name": "Ali Sadikin", "url": "https://github.com/alisadikinma" },
   "homepage": "https://github.com/alisadikinma/gaspol-catalog",
   "repository": "https://github.com/alisadikinma/gaspol-catalog",
