@@ -9,9 +9,9 @@ Distilled from the deck folders of finished catalogs and pitch decks. Run
 |---|---|
 | `watermark` | `mark` / `unmark`: tiled diagonal text watermark (or `grid=(cols, rows)` cell-centred text) and corner mark, REVERSIBLE (alpha composite is inverted per pixel). `logo=PATH` tiles a logo at 12% in the page ink instead; logo mode is NOT reversible (`unmark` raises ValueError). Ink white on dark pages, charcoal on light, sampled from the page. |
 | `pdf` | `list_pages`, `build_pdf`: one page size, optional watermark, skip list. Pillow's own writer, no img2pdf. |
-| `pptx` | `build_pptx`: one full-bleed picture per 16:9 slide. |
+| `pptx` | `build_pptx`: one full-bleed picture per 16:9 slide; optional `transition="fade"`, `jpeg_quality`. |
 | `stamp` | `stamp_dir`: numeral from the filename, footer colour sampled, optional white wordmark. |
-| `band` | `add_band`: footer band with a text line and a logo lockup. |
+| `band` | `add_band`: footer band with a text line and a logo lockup; optional `url`, `fit_canvas` letterbox, and `number`/`total` (only after approval). |
 | `patch` | `ink_bbox`, `fit` (size by cap height, tracking by width), `render_text`, `paste_text`, `blend_fill` (Laplace inpaint), `glow_text`, `replace_line` (swap one text line: erase, cap height and ink colour taken from the old ink, `squeeze=True` tracks down to -0.04 em), `lerp_fill`, `erase_between`, `size_for_cap`, `baseline_for_top`. |
 | `erase` | `erase_footer`: OCR (tesseract) + OpenCV inpaint of a baked-in footer tag. |
 | `slots` | `find_white_slots`, `find_slots` (white or magenta, quads), `paste_quad` (perspective paste), `fill_slots` (`key`, `mode`): paste real logos into blank white or magenta slots. |

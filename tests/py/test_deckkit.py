@@ -353,3 +353,113 @@ class WatermarkLogoGridTest(unittest.TestCase):
             out = Path(t) / "o.pdf"
             self.assertEqual(_quiet_cli(["pdf", str(src), str(out), "--watermark", "X", "--grid", "3x4"]), 0)
             self.assertEqual(_quiet_cli(["pdf", str(src), str(out), "--watermark", "X", "--grid", "bad"]), 1)
+
+
+def _ink_count(im, box, bg=(255, 255, 255)):
+    arr = np.asarray(im.convert("RGB").crop(box)).astype(int)
+    return int((np.abs(arr - np.array(bg)).sum(2) > 60).sum())
+
+
+class BandOptionsTest(unittest.TestCase):
+    def test_url_adds_ink_under_logo_and_grows_page(self):
+        logo = Image.new("RGBA", (100, 40), (200, 0, 0, 255))
+        plain = band.add_band(page((1000, 500)), "RAHASIA")
+        with_url = band.add_band(page((1000, 500)), "RAHASIA", [logo], url="contoh.ai")
+        b = int(1000 * 0.055)
+        self.assertEqual(with_url.size, (1000, 500 + b))
+        box = (800, 500 + int(b * 0.7), 1000, 500 + b)
+        self.assertEqual(_ink_count(plain, box), 0)
+        self.assertGreater(_ink_count(with_url, box), 0)
+
+    def test_fit_canvas_letterboxes_before_band(self):
+        out = band.add_band(Image.new("RGB", (900, 400), (10, 20, 30)), "X", fit_canvas=(1920, 1080))
+        self.assertEqual(out.width, 1920)
+        self.assertEqual(out.height, 1080 + int(1920 * 0.055))
+        self.assertEqual(out.getpixel((5, 5)), (10, 20, 30))
+
+    def test_number_drawn_right_end_only_when_given(self):
+        w, h = 1000, 500
+        b = int(w * 0.055)
+        box = (int(w * 0.9), h + 2, w, h + b)
+        without = band.add_band(page((w, h)), "X")
+        with_n = band.add_band(page((w, h)), "X", number=3, total=10)
+        self.assertEqual(_ink_count(without, box), 0)
+        self.assertGreater(_ink_count(with_n, box), 0)
+
+    def test_number_fmt(self):
+        w, h = 1000, 500
+        b = int(w * 0.055)
+        box = (int(w * 0.8), h + 2, w, h + b)
+        a = band.add_band(page((w, h)), "X", number=3, total=10)
+        c = band.add_band(page((w, h)), "X", number=3, total=10, number_fmt="halaman {n} dari {total}")
+        self.assertGreater(_ink_count(c, box), _ink_count(a, box))
+
+    def test_cli_band_options(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            src, dst = t / "s", t / "d"
+            src.mkdir()
+            for n in ("01", "02"):
+                page((400, 300)).save(src / f"{n}.png")
+            rc = _quiet_cli(["band", str(src), str(dst), "--text", "X", "--url", "contoh.ai", "--numbers",
+                             "--number-fmt", "{n}/{total}", "--fit-canvas", "800x450"])
+            self.assertEqual(rc, 0)
+            self.assertEqual(Image.open(dst / "02.png").size, (800, 450 + int(800 * 0.055)))
+            self.assertEqual(_quiet_cli(["band", str(src), str(dst), "--text", "X", "--fit-canvas", "bad"]), 1)
+
+
+try:
+    import pptx as _pptx  # noqa: F401
+    HAVE_PPTX = True
+except ImportError:
+    HAVE_PPTX = False
+
+
+@unittest.skipUnless(HAVE_PPTX, "python-pptx not importable (use the gaspol-video venv python)")
+class PptxOptionsTest(unittest.TestCase):
+    def _imgs(self, t, n=2):
+        paths = []
+        for i in range(n):
+            p = Path(t) / f"{i + 1:02d}.png"
+            page((400, 225)).save(p)
+            paths.append(p)
+        return paths
+
+    def _zip(self, out):
+        import zipfile
+        return zipfile.ZipFile(out)
+
+    def test_fade_transition_in_slide_xml(self):
+        from tools.deckkit import pptx as dk
+        with tempfile.TemporaryDirectory() as t:
+            out = Path(t) / "o.pptx"
+            self.assertEqual(dk.build_pptx(self._imgs(t), out, transition="fade"), 2)
+            z = self._zip(out)
+            xml = z.read("ppt/slides/slide1.xml").decode()
+            self.assertIn("<p:transition", xml)
+            self.assertIn("<p:fade", xml)
+            plain = Path(t) / "p.pptx"
+            dk.build_pptx(self._imgs(t), plain)
+            self.assertNotIn("<p:transition", self._zip(plain).read("ppt/slides/slide1.xml").decode())
+
+    def test_bad_transition_raises(self):
+        from tools.deckkit import pptx as dk
+        with tempfile.TemporaryDirectory() as t:
+            with self.assertRaises(ValueError):
+                dk.build_pptx(self._imgs(t), Path(t) / "o.pptx", transition="wipe")
+
+    def test_jpeg_quality_stores_jpeg(self):
+        from tools.deckkit import pptx as dk
+        with tempfile.TemporaryDirectory() as t:
+            out = Path(t) / "o.pptx"
+            dk.build_pptx(self._imgs(t), out, jpeg_quality=92)
+            media = [n for n in self._zip(out).namelist() if n.startswith("ppt/media/")]
+            self.assertTrue(media)
+            self.assertTrue(all(n.lower().endswith((".jpg", ".jpeg")) for n in media), media)
+
+    def test_cli_pptx_options(self):
+        with tempfile.TemporaryDirectory() as t:
+            out = Path(t) / "o.pptx"
+            rc = _quiet_cli(["pptx", str(out), *map(str, self._imgs(t)), "--transition", "fade", "--jpeg-quality", "90"])
+            self.assertEqual(rc, 0)
+            self.assertIn("<p:fade", self._zip(out).read("ppt/slides/slide1.xml").decode())

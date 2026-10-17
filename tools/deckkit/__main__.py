@@ -1,5 +1,6 @@
 """``python3 -m tools.deckkit <command>`` from the plugin root."""
 import argparse
+import re
 import sys
 
 from PIL import Image
@@ -31,6 +32,8 @@ def main(argv=None):
     s = sub.add_parser("pptx", help="images -> 16:9 pptx")
     s.add_argument("out")
     s.add_argument("images", nargs="+")
+    s.add_argument("--transition", choices=["fade"], help="slide transition (default none)")
+    s.add_argument("--jpeg-quality", type=int, help="store pictures as JPEG at this quality, e.g. 92")
 
     s = sub.add_parser("stamp", help="stamp page numbers from filenames")
     s.add_argument("src")
@@ -42,6 +45,11 @@ def main(argv=None):
     s.add_argument("dst_dir")
     s.add_argument("--text", required=True)
     s.add_argument("--logos", nargs="*", default=[], help="left-to-right logo files")
+    s.add_argument("--url", help="small line under the logos, e.g. a web address")
+    s.add_argument("--numbers", action="store_true",
+                   help="draw page numbers from filename digits (only after the renders are approved)")
+    s.add_argument("--number-fmt", default="{n} / {total}", help="number text, uses {n} and {total}")
+    s.add_argument("--fit-canvas", help="WxH: letterbox each page to this size before banding")
 
     s = sub.add_parser("unmark", help="invert a previous watermark (same text/options)")
     s.add_argument("src")
@@ -112,7 +120,7 @@ def main(argv=None):
             print(f"{pdf.build_pdf(pages, a.out, size, mark_opts=opts)} pages -> {a.out}")
         elif a.cmd == "pptx":
             from . import pptx
-            print(f"{pptx.build_pptx(a.images, a.out)} slides -> {a.out}")
+            print(f"{pptx.build_pptx(a.images, a.out, transition=a.transition, jpeg_quality=a.jpeg_quality)} slides -> {a.out}")
         elif a.cmd == "stamp":
             from . import stamp
             print(f"stamped {len(stamp.stamp_dir(a.src, a.dst, a.wordmark))} pages")
@@ -122,8 +130,21 @@ def main(argv=None):
             logos = [Image.open(p) for p in a.logos]
             os.makedirs(a.dst_dir, exist_ok=True)
             names = sorted(f for f in os.listdir(a.src_dir) if f.lower().endswith(".png"))
+            fit = None
+            if a.fit_canvas:
+                try:
+                    fit = tuple(int(v) for v in a.fit_canvas.lower().split("x"))
+                    assert len(fit) == 2
+                except (ValueError, AssertionError):
+                    raise ValueError(f"--fit-canvas needs WxH like 2752x1536, got {a.fit_canvas!r}") from None
             for n in names:
-                band.add_band(Image.open(os.path.join(a.src_dir, n)), a.text, logos).save(os.path.join(a.dst_dir, n))
+                digits = re.search(r"\d+", n) if a.numbers else None
+                if a.numbers and not digits:
+                    raise ValueError(f"--numbers needs digits in the filename, got {n!r}")
+                band.add_band(Image.open(os.path.join(a.src_dir, n)), a.text, logos, url=a.url,
+                              number=int(digits.group(0)) if digits else None,
+                              total=len(names) if a.numbers else None,
+                              number_fmt=a.number_fmt, fit_canvas=fit).save(os.path.join(a.dst_dir, n))
             print(f"{len(names)} pages banded")
         elif a.cmd == "unmark":
             from . import watermark

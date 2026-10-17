@@ -11,9 +11,9 @@ and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` need
 | Prompt files -> slide images (image MCP) | `deckkit gen prompts/manifest.json --ver r1` | `gen` |
 | Pages folder -> PDF (one page size, optional watermark) | `deckkit pdf SRC OUT [--watermark TEXT --watermark-logo LOGO.png --grid 3x4 --corner CONFIDENTIAL --page-size WxH --skip ...]` | `pdf` |
 | Public version without price pages | `deckkit pdf ... --skip 18.png 19.png` | `pdf` |
-| Pages -> PPTX (16:9, clean pages) | `deckkit pptx OUT images...` | `pptx` |
+| Pages -> PPTX (16:9, clean pages) | `deckkit pptx OUT images... [--transition fade] [--jpeg-quality 92]` | `pptx` |
 | Page numbers from filenames (+ wordmark) | `deckkit stamp SRC DST [--wordmark logo.png]` (never bake numbers into prompts) | `stamp` |
-| Footer band: confidentiality line + logo lockup | `deckkit band SRC DST --text "..." --logos a.png b.png` | `band` |
+| Footer band: confidentiality line + logo lockup | `deckkit band SRC DST --text "..." --logos a.png b.png [--url U] [--fit-canvas WxH] [--numbers --number-fmt "{n} / {total}"]` (`--numbers` only after the human approved the renders, hard rule 4) | `band` |
 | Undo a watermark baked into finals | `deckkit unmark SRC DST --watermark TEXT --corner TEXT` (same options as `pdf`, incl. `--grid`; a logo watermark is not reversible) | `watermark` |
 | Remove a baked-in footer tag or page number | `deckkit erase-footer IMG NEEDLE` | `erase` |
 | Real logos into blank white boxes the model left | `deckkit logo-slots IMG logos...` (left to right; `--key` white or magenta, `--mode` flat or quad) | `slots` |
