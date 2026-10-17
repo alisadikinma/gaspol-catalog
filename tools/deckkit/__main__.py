@@ -1,5 +1,6 @@
 """``python3 -m tools.deckkit <command>`` from the plugin root."""
 import argparse
+import os
 import re
 import sys
 
@@ -145,7 +146,6 @@ def main(argv=None):
             from . import stamp
             print(f"stamped {len(stamp.stamp_dir(a.src, a.dst, a.wordmark))} pages")
         elif a.cmd == "band":
-            import os
             from . import band
             logos = [Image.open(p) for p in a.logos]
             os.makedirs(a.dst_dir, exist_ok=True)
@@ -251,7 +251,19 @@ def main(argv=None):
             model = a.model or h.get("image_model")
             if not model:
                 raise ValueError(gen.NO_MODEL)
-            generator = gen.load_generator(h.get("image_client"))
+            client = h.get("image_client") or os.environ.get(gen.ENV_CLIENT)
+            try:
+                generator = gen.load_generator(client)
+            except RuntimeError:
+                py = gen.client_python(client)
+                if not py or os.environ.get(gen.ENV_REEXEC) or os.path.realpath(py) == os.path.realpath(sys.executable):
+                    raise
+                # the client's packages live in its own venv: run this same command there, once
+                print(f"image client needs its own environment, re-running with {py}", file=sys.stderr)
+                os.chdir(Path(__file__).resolve().parents[2])
+                args = list(sys.argv[1:] if argv is None else argv)
+                os.execve(py, [py, "-m", "tools.deckkit", *args], {**os.environ, gen.ENV_REEXEC: "1"})
+                return 1
             res = gen.run(mp, generator, out_dir=a.out, raw_dir=a.raw, ver=a.ver, only=a.only or None,
                           workers=a.workers, tries=a.tries, model=model,
                           mode=a.mode or h.get("image_mode"), resolution=a.resolution)

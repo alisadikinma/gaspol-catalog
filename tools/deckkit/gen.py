@@ -14,6 +14,21 @@ NO_MODEL = "no model: pass --model or set image_model in the house standard"
 _LOCAL = re.compile(r"local: (\S+)")
 
 
+ENV_REEXEC = "DECKKIT_REEXEC"
+
+
+def client_python(client_dir):
+    """The image client's own interpreter (``<client>/.venv/bin/python``), or None.
+
+    The client's dependencies (its MCP package) usually live only in its own venv, not in the
+    venv that runs deckkit, so ``gen`` re-runs itself there when the import fails.
+    """
+    if not client_dir:
+        return None
+    py = os.path.join(str(client_dir), ".venv", "bin", "python")
+    return py if os.path.isfile(py) and os.access(py, os.X_OK) else None
+
+
 def load_generator(client_dir=None):
     """The image client's ``generate_image`` callable (FastMCP wrapper unwrapped)."""
     client_dir = client_dir or os.environ.get(ENV_CLIENT)
