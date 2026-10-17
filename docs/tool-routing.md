@@ -8,6 +8,7 @@ and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` need
 | I want to... | Use | Module |
 |---|---|---|
 | Slide spec -> prompt files + manifest | `deckkit prompts slides.json --house H` | `prompts` |
+| Prompt files -> slide images (image MCP) | `deckkit gen prompts/manifest.json --ver r1` | `gen` |
 | Pages folder -> PDF (one page size, optional watermark) | `deckkit pdf SRC OUT [--watermark TEXT --corner CONFIDENTIAL --page-size WxH --skip ...]` | `pdf` |
 | Public version without price pages | `deckkit pdf ... --skip 18.png 19.png` | `pdf` |
 | Pages -> PPTX (16:9, clean pages) | `deckkit pptx OUT images...` | `pptx` |

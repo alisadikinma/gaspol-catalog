@@ -55,6 +55,19 @@ def main(argv=None):
     s.add_argument("--out", help="output dir (default: <spec dir>/prompts)")
     s.add_argument("--only", nargs="*", type=int, default=[], help="write only these slide numbers")
 
+    s = sub.add_parser("gen", help="prompt manifest -> slide images (image MCP)")
+    s.add_argument("manifest")
+    s.add_argument("--house", help="house standard file (image_client, image_model, image_mode)")
+    s.add_argument("--ver", help="version tag: output NN-<ver>.png (default slide-NN.png)")
+    s.add_argument("--only", nargs="*", type=int, default=[], help="render only these slide numbers")
+    s.add_argument("--model", help="image model (default: house image_model)")
+    s.add_argument("--mode", help="generator mode (default: house image_mode)")
+    s.add_argument("--workers", type=int, default=4)
+    s.add_argument("--tries", type=int, default=3)
+    s.add_argument("--out", help="output dir (default: <project>/renders)")
+    s.add_argument("--raw", help="raw generator dir (default: <project>/.tmp/mentah)")
+    s.add_argument("--resolution", default="2K")
+
     a = ap.parse_args(argv)
     try:
         if a.cmd == "pdf":
@@ -101,6 +114,22 @@ def main(argv=None):
             out = Path(a.out) if a.out else Path(a.spec).resolve().parent / "prompts"
             n = prompts.build(a.spec, house=h, preset=a.preset, out_dir=out, only=a.only or None)
             print(f"{n} prompt -> {out}")
+        elif a.cmd == "gen":
+            from pathlib import Path
+            from . import gen, house
+            mp = Path(a.manifest).resolve()
+            hp = house.resolve(explicit=a.house, start=mp.parent)
+            h = house.load(hp) if hp else {}
+            model = a.model or h.get("image_model")
+            if not model:
+                raise ValueError(gen.NO_MODEL)
+            generator = gen.load_generator(h.get("image_client"))
+            res = gen.run(mp, generator, out_dir=a.out, raw_dir=a.raw, ver=a.ver, only=a.only or None,
+                          workers=a.workers, tries=a.tries, model=model,
+                          mode=a.mode or h.get("image_mode"), resolution=a.resolution)
+            for n, status in res:
+                print(f"{n:02d} {status}")
+            return 1 if any(st.startswith("FAIL") for _, st in res) else 0
     except (FileNotFoundError, ValueError, RuntimeError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1
