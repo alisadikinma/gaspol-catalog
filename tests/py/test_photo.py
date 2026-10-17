@@ -1,3 +1,5 @@
+import contextlib
+import io
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +12,11 @@ except ImportError:
 
 from tools.deckkit import __main__ as cli
 from tools.deckkit import photo
+
+
+def run_cli(argv):
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        return cli.main(argv)
 
 PAGE = (200, 120)
 BOX = (40, 30, 80, 50)
@@ -129,20 +136,20 @@ class CliTest(unittest.TestCase):
 
     def test_box_writes_out_and_leaves_input(self):
         out = self.d / "o.png"
-        rc = cli.main(["photo", str(self.d / "p.png"), str(self.d / "f.png"),
+        rc = run_cli(["photo", str(self.d / "p.png"), str(self.d / "f.png"),
                        "--box", "40,30,80,50", "--radius", "8", "--out", str(out)])
         self.assertEqual(rc, 0)
         self.assertEqual(Image.open(out).getpixel((80, 55)), (200, 20, 20))
         self.assertEqual(Image.open(self.d / "p.png").getpixel((80, 55)), (250, 250, 250))
 
     def test_default_overwrites_image(self):
-        rc = cli.main(["photo", str(self.d / "p.png"), str(self.d / "f.png"), "--box", "40,30,80,50"])
+        rc = run_cli(["photo", str(self.d / "p.png"), str(self.d / "f.png"), "--box", "40,30,80,50"])
         self.assertEqual(rc, 0)
         self.assertEqual(Image.open(self.d / "p.png").getpixel((80, 55)), (200, 20, 20))
 
     def test_circle_uses_box_centre_and_half_min_side(self):
         out = self.d / "c.png"
-        rc = cli.main(["photo", str(self.d / "p.png"), str(self.d / "f.png"),
+        rc = run_cli(["photo", str(self.d / "p.png"), str(self.d / "f.png"),
                        "--box", "60,20,80,80", "--circle", "--out", str(out)])
         self.assertEqual(rc, 0)
         im = Image.open(out)
@@ -150,9 +157,9 @@ class CliTest(unittest.TestCase):
         self.assertEqual(im.getpixel((62, 22)), (250, 250, 250))
 
     def test_bad_box_fails(self):
-        rc = cli.main(["photo", str(self.d / "p.png"), str(self.d / "f.png"), "--box", "1,2,3"])
+        rc = run_cli(["photo", str(self.d / "p.png"), str(self.d / "f.png"), "--box", "1,2,3"])
         self.assertEqual(rc, 1)
-        rc = cli.main(["photo", str(self.d / "p.png"), str(self.d / "f.png"), "--box", "190,0,50,50"])
+        rc = run_cli(["photo", str(self.d / "p.png"), str(self.d / "f.png"), "--box", "190,0,50,50"])
         self.assertEqual(rc, 1)
 
 

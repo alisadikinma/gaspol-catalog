@@ -16,6 +16,7 @@ Distilled from the deck folders of finished catalogs and pitch decks. Run
 | `erase` | `erase_footer`: OCR (tesseract) + OpenCV inpaint of a baked-in footer tag. |
 | `slots` | `find_white_slots`, `fill_slots`: paste real logos into blank white boxes. |
 | `photo` | `cover`, `place`, `circle`: cover-crop a real photo into a rounded box or circle. |
+| `recolour` | `bars`: find thin vertical accent bars right of `x_from`, recolour top to bottom; antialiasing kept. Count mismatch raises. |
 
 ## Not folded in
 

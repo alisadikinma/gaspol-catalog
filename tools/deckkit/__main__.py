@@ -56,6 +56,13 @@ def main(argv=None):
     s.add_argument("--circle", action="store_true", help="circular mask instead of a rounded box")
     s.add_argument("--out", help="output path (default: overwrite IMAGE)")
 
+    s = sub.add_parser("recolour", help="recolour the accent bars beside text points, top to bottom")
+    s.add_argument("image")
+    s.add_argument("--colours", nargs="+", required=True, help="hex colours, top bar first")
+    s.add_argument("--x-from", type=float, default=0.55, help="only look right of this page fraction")
+    s.add_argument("--source", default="#23857f", help="current bar colour")
+    s.add_argument("--out", help="output path (default: overwrite IMAGE)")
+
     s = sub.add_parser("prompts", help="slide spec -> prompt files + manifest")
     s.add_argument("spec")
     s.add_argument("--house", help="house standard file (else $GASPOL_CATALOG_HOUSE or .gaspol/context-sources.md)")
@@ -125,6 +132,13 @@ def main(argv=None):
                     res = photo.circle(page, pic, (x + w // 2, y + h // 2), min(w, h) // 2)
                 else:
                     res = photo.place(page, pic, (x, y, w, h), radius=a.radius)
+            out = a.out or a.image
+            res.save(out)
+            print(out)
+        elif a.cmd == "recolour":
+            from . import recolour
+            with Image.open(a.image) as page:
+                res = recolour.bars(page, a.colours, x_from=a.x_from, source=a.source)
             out = a.out or a.image
             res.save(out)
             print(out)
