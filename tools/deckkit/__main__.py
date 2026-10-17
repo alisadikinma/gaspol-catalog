@@ -48,6 +48,13 @@ def main(argv=None):
     s.add_argument("image")
     s.add_argument("logos", nargs="+")
 
+    s = sub.add_parser("prompts", help="slide spec -> prompt files + manifest")
+    s.add_argument("spec")
+    s.add_argument("--house", help="house standard file (else $GASPOL_CATALOG_HOUSE or .gaspol/context-sources.md)")
+    s.add_argument("--preset", help="style preset name (default: the house standard's preset)")
+    s.add_argument("--out", help="output dir (default: <spec dir>/prompts)")
+    s.add_argument("--only", nargs="*", type=int, default=[], help="write only these slide numbers")
+
     a = ap.parse_args(argv)
     try:
         if a.cmd == "pdf":
@@ -86,6 +93,14 @@ def main(argv=None):
             img, used = slots.fill_slots(Image.open(a.image), a.logos)
             img.save(a.image)
             print(f"{len(used)} logos placed")
+        elif a.cmd == "prompts":
+            from pathlib import Path
+            from . import house, prompts
+            hp = house.resolve(explicit=a.house, start=Path(a.spec).resolve().parent)
+            h = house.load(hp) if hp else None
+            out = Path(a.out) if a.out else Path(a.spec).resolve().parent / "prompts"
+            n = prompts.build(a.spec, house=h, preset=a.preset, out_dir=out, only=a.only or None)
+            print(f"{n} prompt -> {out}")
     except (FileNotFoundError, ValueError, RuntimeError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1
