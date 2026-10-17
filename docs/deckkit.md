@@ -12,7 +12,7 @@ Distilled from the deck folders of finished catalogs and pitch decks. Run
 | `pptx` | `build_pptx`: one full-bleed picture per 16:9 slide. |
 | `stamp` | `stamp_dir`: numeral from the filename, footer colour sampled, optional white wordmark. |
 | `band` | `add_band`: footer band with a text line and a logo lockup. |
-| `patch` | `ink_bbox`, `fit` (size by cap height, tracking by width), `render_text`, `paste_text`, `blend_fill` (Laplace inpaint), `glow_text`. |
+| `patch` | `ink_bbox`, `fit` (size by cap height, tracking by width), `render_text`, `paste_text`, `blend_fill` (Laplace inpaint), `glow_text`, `replace_line` (swap one text line: erase, cap height and ink colour taken from the old ink, `squeeze=True` tracks down to -0.04 em), `lerp_fill`, `erase_between`, `size_for_cap`, `baseline_for_top`. |
 | `erase` | `erase_footer`: OCR (tesseract) + OpenCV inpaint of a baked-in footer tag. |
 | `slots` | `find_white_slots`, `find_slots` (white or magenta, quads), `paste_quad` (perspective paste), `fill_slots` (`key`, `mode`): paste real logos into blank white or magenta slots. |
 | `photo` | `cover`, `place`, `circle`: cover-crop a real photo into a rounded box or circle. |

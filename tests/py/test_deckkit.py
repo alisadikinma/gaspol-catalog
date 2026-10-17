@@ -4,11 +4,11 @@ from pathlib import Path
 
 try:
     import numpy as np
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFont
 except ImportError:
     raise unittest.SkipTest('needs Pillow + numpy: use the gaspol-video venv python')
 
-from tools.deckkit import band, patch, pdf, slots, stamp, watermark
+from tools.deckkit import band, fonts, patch, pdf, slots, stamp, watermark
 
 
 def page(size=(600, 340), colour=(240, 240, 240)):
@@ -198,3 +198,97 @@ class QuadSlotsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReplaceLineTest(unittest.TestCase):
+    INK = (20, 30, 90)
+
+    def setUp(self):
+        self.font = fonts.find_font()
+        self.bg = (235, 240, 245)
+        self.img = Image.new("RGB", (500, 200), self.bg)
+        self.box = (40, 60, 440, 120)
+        old = patch.render_text("OLD TITLE HERE", self.font, 30, self.INK + (255,))
+        patch.paste_text(self.img, old, (60, 100))
+        self.old_bbox = patch.ink_bbox(self.img, self.box)
+
+    def test_replaces_with_same_cap_height_and_ink_colour(self):
+        out = patch.replace_line(self.img, self.box, "NEW LINE", self.font)
+        new = patch.ink_bbox(out, self.box)
+        self.assertIsNotNone(new)
+        self.assertLessEqual(abs((new[3] - new[1]) - (self.old_bbox[3] - self.old_bbox[1])), 1)
+        a = np.asarray(out).astype(int)
+        sub = a[self.box[1]:self.box[3], self.box[0]:self.box[2]]
+        # nothing darker than background outside the new glyph bbox
+        mask = np.ones(sub.shape[:2], bool)
+        mask[new[1] - self.box[1] - 2:new[3] - self.box[1] + 3, new[0] - self.box[0] - 2:new[2] - self.box[0] + 3] = False
+        self.assertLess(np.abs(sub[mask] - np.array(self.bg)).max(), 3)
+        darkest = sub.reshape(-1, 3)[sub.sum(axis=2).argmin()]
+        self.assertLess(np.abs(darkest - np.array(self.INK)).max(), 25)
+        # input untouched
+        self.assertEqual(patch.ink_bbox(self.img, self.box), self.old_bbox)
+
+    def test_explicit_fill_wins(self):
+        out = patch.replace_line(self.img, self.box, "NEW", self.font, fill=(200, 0, 0))
+        a = np.asarray(out).astype(int)[self.box[1]:self.box[3], self.box[0]:self.box[2]]
+        self.assertGreater(a[..., 0].max() - a[..., 2].min(), 100)
+
+    def test_too_wide_raises_and_squeeze_rescues_slight_overflow(self):
+        with self.assertRaisesRegex(ValueError, "text wider than box"):
+            patch.replace_line(self.img, self.box, "X" * 60, self.font)
+        size = patch.size_for_cap(self.font, self.old_bbox[3] - self.old_bbox[1] + 1)
+        f = ImageFont.truetype(self.font, size)
+        avail = self.box[2] - self.box[0]
+        text = "W"
+        while f.getlength(text + "W") < avail:
+            text += "W"
+        while f.getlength(text) <= avail + 2:
+            text += "i"
+        n = len(text)
+        w0 = f.getlength(text)
+        self.assertLess(w0 - avail, 0.04 * size * (n - 1) - 2)
+        with self.assertRaises(ValueError):
+            patch.replace_line(self.img, self.box, text, self.font)
+        out = patch.replace_line(self.img, self.box, text, self.font, squeeze=True)
+        new = patch.ink_bbox(out, self.box)
+        self.assertGreaterEqual(new[0], self.box[0])
+        self.assertLessEqual(new[2], self.box[2])
+        with self.assertRaises(ValueError):
+            patch.replace_line(self.img, self.box, "X" * 60, self.font, squeeze=True)
+
+    def test_no_ink_raises(self):
+        with self.assertRaisesRegex(ValueError, "no ink in box"):
+            patch.replace_line(self.img, (40, 140, 440, 190), "A", self.font)
+
+    def test_align_right_keeps_right_edge(self):
+        out = patch.replace_line(self.img, self.box, "SHORT", self.font, align="right")
+        new = patch.ink_bbox(out, self.box)
+        self.assertLessEqual(abs(new[2] - self.old_bbox[2]), 3)
+
+
+class FillHelpersTest(unittest.TestCase):
+    def test_lerp_fill_reproduces_horizontal_gradient(self):
+        w, h = 300, 80
+        ramp = np.linspace(40, 220, w)
+        arr = np.tile(ramp[None, :, None], (h, 1, 3)).astype(np.uint8)
+        img = Image.fromarray(arr)
+        d = ImageDraw.Draw(img)
+        d.rectangle((100, 20, 200, 60), fill=(0, 0, 0))
+        out = patch.lerp_fill(img, (100, 20, 201, 61))
+        err = np.abs(np.asarray(out).astype(int) - arr.astype(int))[20:61, 100:201]
+        self.assertLess(err.max(), 8)
+
+    def test_erase_between_flat_bg(self):
+        img = Image.new("RGB", (100, 50), (10, 10, 10))
+        out = patch.erase_between(img, (20, 10, 60, 30), bg=(200, 100, 50))
+        self.assertEqual(out.getpixel((30, 20)), (200, 100, 50))
+        self.assertEqual(out.getpixel((70, 20)), (10, 10, 10))
+
+    def test_size_for_cap_monotonic_and_baseline(self):
+        font = fonts.find_font()
+        sizes = [patch.size_for_cap(font, c) for c in range(8, 60, 4)]
+        self.assertEqual(sizes, sorted(sizes))
+        self.assertGreater(sizes[-1], sizes[0])
+        s = patch.size_for_cap(font, 30)
+        b = patch.baseline_for_top(font, s, 100)
+        self.assertLessEqual(abs((b - 100) - 30), 1)

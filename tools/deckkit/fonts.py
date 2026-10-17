@@ -20,3 +20,16 @@ def load_font(px, path=None):
             except OSError:
                 continue
     return ImageFont.load_default()
+
+
+def find_font(path=None):
+    """Path of the first font file that opens: ``path`` if given, else the first of CANDIDATES.
+    Raises FileNotFoundError when none opens."""
+    for p in ([path] if path else []) + CANDIDATES:
+        if p and os.path.exists(p):
+            try:
+                ImageFont.truetype(p, 12)
+            except OSError:
+                continue
+            return p
+    raise FileNotFoundError("no usable font file; pass font_path")
