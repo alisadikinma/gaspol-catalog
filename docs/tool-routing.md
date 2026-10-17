@@ -24,6 +24,8 @@ and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` need
 | deck.md -> HTML review page for the human | `deckkit review DECK.md OUT.html [--title T]` | `deckmd` |
 | Prompt files -> deck.md text (what the slides will say) | `deckkit deckmd PROMPTS_DIR OUT.md` | `deckmd` |
 | Fix a few words in a rendered page without re-rendering | `tools/deckkit/patch.py`: `ink_bbox`, `fit`, `render_text`, `paste_text`, `blend_fill`, `glow_text`, `replace_line` (swap one line at the old cap height and ink colour; `squeeze` for tight boxes), `lerp_fill`, `erase_between`, `size_for_cap`, `baseline_for_top` | `patch` |
+| HTML page -> PNG at an exact size (headless Chrome) | `deckkit shot page.html out.png --size 2752x1536` | `chrome` |
+| Small pill label or flag drawn in code (no image model) | `tools/deckkit/chips.py`: `pill`, `flag` | `chips` |
 
 Rule of thumb: patch, do not re-roll. Re-rendering a page re-rolls every approved string on it.
 

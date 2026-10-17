@@ -99,6 +99,11 @@ def main(argv=None):
     s.add_argument("--size", default="2752x1536", help="WxH of the page (default 2752x1536)")
     s.add_argument("--font", help="font file (.ttf/.ttc); default: first system font found")
 
+    s = sub.add_parser("shot", help="HTML page -> PNG at an exact size (headless Chrome)")
+    s.add_argument("html")
+    s.add_argument("out")
+    s.add_argument("--size", default="2752x1536", help="WxH of the PNG (default 2752x1536)")
+
     s = sub.add_parser("prompts", help="slide spec -> prompt files + manifest")
     s.add_argument("spec")
     s.add_argument("--house", help="house standard file (else $GASPOL_CATALOG_HOUSE or .gaspol/context-sources.md)")
@@ -221,6 +226,14 @@ def main(argv=None):
                 spec = json.load(fh)
             table.render(spec, size=size, font_path=a.font).save(a.out)
             print(a.out)
+        elif a.cmd == "shot":
+            from . import chrome
+            try:
+                size = tuple(int(v) for v in a.size.lower().split("x"))
+                assert len(size) == 2
+            except (ValueError, AssertionError):
+                raise ValueError(f"--size needs WxH like 2752x1536, got {a.size!r}") from None
+            print(chrome.shot(a.html, a.out, size=size))
         elif a.cmd == "prompts":
             from pathlib import Path
             from . import house, prompts

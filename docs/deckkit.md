@@ -19,6 +19,8 @@ Distilled from the deck folders of finished catalogs and pitch decks. Run
 | `recolour` | `bars`: find thin vertical accent bars right of `x_from`, recolour top to bottom; antialiasing kept. Count mismatch raises. |
 | `table` | `render(spec, size, font_path)`: comparison page drawn with PIL (title, header, rows, optional `good`/`bad` cell marks as soft green / red tints). Font size searched per page; a cell that fits at no size raises `ValueError("cell r,c does not fit")`. Bottom band left empty. |
 | `deckmd` | `review_html(md_text, title)`: standalone phone-readable HTML, one card per `#`/`##` section, all text escaped. `from_prompts(dir)`: `## Slide NN` sections (numeric order) with the quoted TEXT lines of each `slide-NN.md` as `- role: text` bullets; skips other files and `_rejected/`; no slide file raises `ValueError("no slide-NN.md in <dir>")`. |
+| `chrome` | `find_chrome` ($CHROME_BIN, PATH names, macOS app), `shot` (HTML -> PNG at an exact size, crops extra pixels, raises if smaller), `print_pdf`. Temp profile, 120 s timeout. CLI `shot`. |
+| `chips` | `pill` (RGBA label with rounded ends), `flag` (equal stripes, `h` or `v`). Library only, no CLI. |
 
 ## Not folded in
 
