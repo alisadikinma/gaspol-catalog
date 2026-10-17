@@ -76,18 +76,32 @@ def find_slots(img, key="white", min_area=0.002):
     return sorted(quads, key=lambda q: (min(p[0] for p in q), min(p[1] for p in q)))
 
 
-def paste_quad(img, logo, quad, plate=None, fit=0.8):
+def paste_quad(img, logo, quad, plate=None, fit=0.8, mode="quad"):
     """Warp ``logo`` (RGBA image) onto ``quad`` (TL, TR, BR, BL), centred and scaled to ``fit`` of
     the quad's width and height. ``plate`` (RGB) is drawn over the quad first. Leftover magenta
-    pixels in the quad's bounding box are filled from their neighbours. Returns a new image."""
+    pixels in the quad's bounding box are filled from their neighbours. Returns a new image.
+
+    ``mode="quad"`` covers the whole quad. ``mode="pixel"`` pastes (and draws ``plate``) only onto
+    pixels inside the quad that were magenta, so an object the model drew in front of the slot
+    stays in front of the logo; use it with magenta slots only."""
     import cv2
+    if mode not in ("quad", "pixel"):
+        raise ValueError(f"mode must be 'quad' or 'pixel', got {mode!r}")
     base = np.ascontiguousarray(np.asarray(img.convert("RGB")).copy())
     h, w = base.shape[:2]
     q = np.array(quad, dtype=np.float32)
     x0, y0 = np.maximum(q.min(0).astype(int) - 3, 0)
     x1, y1 = np.minimum(q.max(0).astype(int) + 4, [w, h])
+    visible = None
+    if mode == "pixel":
+        inside = np.zeros((h, w), np.uint8)
+        cv2.fillConvexPoly(inside, np.round(q).astype(np.int32), 1)
+        visible = (inside > 0) & (_magenta_dist(base) < 120)
     if plate is not None:
+        before = base.copy()
         cv2.fillConvexPoly(base, np.round(q).astype(np.int32), tuple(int(c) for c in plate[:3]))
+        if visible is not None:
+            base = np.where(visible[..., None], base, before)
     region = base[y0:y1, x0:x1]
     left = (_magenta_dist(region) < 120).astype(np.uint8)
     if left.any():
@@ -105,6 +119,8 @@ def paste_quad(img, logo, quad, plate=None, fit=0.8):
     warped = cv2.warpPerspective(np.asarray(canvas), m, (w, h), flags=cv2.INTER_LINEAR,
                                  borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0, 0))
     alpha = warped[..., 3:4].astype(float) / 255
+    if visible is not None:
+        alpha = alpha * visible[..., None]
     out = base * (1 - alpha) + warped[..., :3] * alpha
     return Image.fromarray(out.round().clip(0, 255).astype(np.uint8))
 
@@ -112,17 +128,21 @@ def paste_quad(img, logo, quad, plate=None, fit=0.8):
 def fill_slots(img, logo_paths, min_area=0.01, fit=(0.78, 0.7), key="white", mode="flat"):
     """Paste ``logo_paths`` into the slots (left to right), centred, scaled to fit. ``mode="flat"``
     pastes axis-aligned and returns ``(new_image, boxes)``; ``mode="quad"`` warps each logo onto
-    its slot quad (:func:`paste_quad`) and returns ``(new_image, quads)``. Raises if the slot
+    its slot quad (:func:`paste_quad`) and returns ``(new_image, quads)``; ``mode="pixel"`` is
+    ``quad`` but only over pixels that were magenta (objects in front of the slot stay in front)
+    and needs ``key="magenta"``, else ValueError. Raises if the slot
     count differs from the logo count. The input image is not modified."""
-    if mode not in ("flat", "quad"):
-        raise ValueError(f"mode must be 'flat' or 'quad', got {mode!r}")
+    if mode not in ("flat", "quad", "pixel"):
+        raise ValueError(f"mode must be 'flat', 'quad' or 'pixel', got {mode!r}")
+    if mode == "pixel" and key != "magenta":
+        raise ValueError("mode='pixel' needs key='magenta'")
     img = img.convert("RGB")
     quads = find_slots(img, key, min_area)
     if len(quads) != len(logo_paths):
         raise ValueError(f"found {len(quads)} slots, got {len(logo_paths)} logos")
-    if mode == "quad":
+    if mode in ("quad", "pixel"):
         for quad, p in zip(quads, logo_paths):
-            img = paste_quad(img, trim_logo(p), quad, fit=min(fit))
+            img = paste_quad(img, trim_logo(p), quad, fit=min(fit), mode=mode)
         return img, quads
     boxes = []
     for quad, p in zip(quads, logo_paths):

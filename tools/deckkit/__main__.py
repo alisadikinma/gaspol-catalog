@@ -107,7 +107,7 @@ def main(argv=None):
     s.add_argument("image")
     s.add_argument("logos", nargs="+")
     s.add_argument("--key", choices=["white", "magenta"], default="white", help="slot colour (default white)")
-    s.add_argument("--mode", choices=["flat", "quad"], default="flat", help="flat paste, or quad = perspective warp onto a tilted slot")
+    s.add_argument("--mode", choices=["flat", "quad", "pixel"], default="flat", help="flat paste; quad = perspective warp onto a tilted slot; pixel = quad, but objects drawn in front of a magenta slot stay in front (needs --key magenta)")
 
     s = sub.add_parser("photo", help="cover-crop a real photo into a box or circle")
     s.add_argument("image")

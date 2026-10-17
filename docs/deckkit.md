@@ -17,9 +17,9 @@ decks. Run
 | `pptx` | `build_pptx`: one full-bleed picture per 16:9 slide; optional `transition="fade"`, `jpeg_quality`. |
 | `stamp` | `stamp_dir`: numeral from the filename, footer colour sampled, optional white wordmark. |
 | `band` | `add_band`: footer band with a text line and a logo lockup; optional `url`, `fit_canvas` letterbox, and `number`/`total` (only after approval). |
-| `patch` | `ink_bbox`, `fit` (size by cap height, tracking by width), `render_text`, `paste_text`, `blend_fill` (Laplace inpaint), `glow_text`, `replace_line` (swap one text line: erase, cap height and ink colour taken from the old ink, `squeeze=True` tracks down to -0.04 em), `lerp_fill`, `erase_between`, `size_for_cap`, `baseline_for_top`. |
+| `patch` | `ink_bbox`, `fit` (size by cap height, tracking by width), `render_text`, `paste_text`, `blend_fill` (Laplace inpaint), `glow_text`, `emblem_text` (round glowing-lettering emblem, optional ring), `fill_from_side` (repeat the edge line beside a box across it), `replace_line` (swap one text line: erase, cap height and ink colour taken from the old ink, `squeeze=True` tracks down to -0.04 em), `lerp_fill`, `erase_between`, `size_for_cap`, `baseline_for_top`. |
 | `erase` | `erase_footer`: OCR (tesseract) + OpenCV inpaint of a baked-in footer tag. |
-| `slots` | `find_white_slots`, `find_slots` (white or magenta, quads), `paste_quad` (perspective paste), `fill_slots` (`key`, `mode`): paste real logos into blank white or magenta slots. |
+| `slots` | `find_white_slots`, `find_slots` (white or magenta, quads), `paste_quad` (perspective paste), `fill_slots` (`key`, `mode` flat, quad or pixel; pixel pastes only where the magenta slot was visible, magenta only): paste real logos into blank white or magenta slots. |
 | `photo` | `cover`, `place`, `circle`: cover-crop a real photo into a rounded box or circle. |
 | `recolour` | `bars`: find thin vertical accent bars right of `x_from`, recolour top to bottom; antialiasing kept. Count mismatch raises. |
 | `table` | `render(spec, size, font_path)`: comparison page drawn with PIL (title, header, rows, optional `good`/`bad` cell marks as soft green / red tints). Font size searched per page; a cell that fits at no size raises `ValueError("cell r,c does not fit")`. Bottom band left empty. |

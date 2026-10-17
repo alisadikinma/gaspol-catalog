@@ -107,6 +107,53 @@ def glow_text(text, font_path, size, tracking, core, glow, radius=7, strength=2.
     return Image.alpha_composite(out, top)
 
 
+def emblem_text(text, font_path, size, core, glow, ring=None, tracking=0.0, radius=7, ring_width=None):
+    """A round emblem: ``text`` as glowing lettering (:func:`glow_text`) centred in a transparent
+    disc-shaped RGBA square, with an optional ``ring`` colour outline. The square is sized so the
+    lettering and its bloom fit inside the circle. Paste it over an erased emblem with
+    :func:`paste_text` (``anchor='cb'``) or ``img.paste(em, xy, em)``."""
+    fonts.find_font(font_path)
+    lettering = glow_text(text, font_path, size, tracking, core, glow, radius=radius)
+    diameter = int(np.ceil(np.hypot(lettering.width, lettering.height))) + 4
+    em = Image.new("RGBA", (diameter, diameter), (0, 0, 0, 0))
+    em.paste(lettering, ((diameter - lettering.width) // 2, (diameter - lettering.height) // 2), lettering)
+    # outside the circle stays transparent whatever the bloom reached
+    disc = Image.new("L", (diameter, diameter), 0)
+    ImageDraw.Draw(disc).ellipse((0, 0, diameter - 1, diameter - 1), fill=255)
+    em.putalpha(Image.fromarray(np.minimum(np.asarray(em.getchannel("A")), np.asarray(disc))))
+    if ring is not None:
+        rw = ring_width or max(2, size // 12)
+        d = ImageDraw.Draw(em)
+        d.ellipse((0, 0, diameter - 1, diameter - 1), outline=tuple(ring[:3]) + (255,), width=rw)
+    return em
+
+
+def fill_from_side(img, box, side="left"):
+    """Erase ``box`` by repeating the pixel line just outside it on ``side`` ('left', 'right',
+    'top' or 'bottom') across the box: the left or right column repeats horizontally, the top or
+    bottom row repeats vertically. Right for a box in a vertical or horizontal gradient that runs
+    along the other axis. ValueError for an unknown side or a box flush with that image edge.
+    Mutates and returns ``img``."""
+    if side not in ("left", "right", "top", "bottom"):
+        raise ValueError(f"side must be left, right, top or bottom, got {side!r}")
+    x0, y0, x1, y1 = box
+    a = np.asarray(img.convert("RGB")).copy()
+    h, w = a.shape[:2]
+    if (side == "left" and x0 < 1) or (side == "right" and x1 >= w) \
+            or (side == "top" and y0 < 1) or (side == "bottom" and y1 >= h):
+        raise ValueError(f"no pixels on the {side} of the box to repeat")
+    if side == "left":
+        a[y0:y1, x0:x1] = a[y0:y1, x0 - 1:x0]
+    elif side == "right":
+        a[y0:y1, x0:x1] = a[y0:y1, x1:x1 + 1]
+    elif side == "top":
+        a[y0:y1, x0:x1] = a[y0 - 1:y0, x0:x1]
+    else:
+        a[y0:y1, x0:x1] = a[y1:y1 + 1, x0:x1]
+    img.paste(Image.fromarray(a), (0, 0))
+    return img
+
+
 def lerp_fill(img, box, margin=3):
     """Erase ``box`` row by row: each row blends the mean colour of the ``margin`` columns just
     left of the box into the mean just right of it. Reproduces a horizontal gradient and a flat

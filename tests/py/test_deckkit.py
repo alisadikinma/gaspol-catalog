@@ -524,3 +524,95 @@ class PptxOptionsTest(unittest.TestCase):
             rc = _quiet_cli(["pptx", str(out), *map(str, self._imgs(t)), "--transition", "fade", "--jpeg-quality", "90"])
             self.assertEqual(rc, 0)
             self.assertIn("<p:fade", self._zip(out).read("ppt/slides/slide1.xml").decode())
+
+
+class EmblemFillSideTest(unittest.TestCase):
+    def setUp(self):
+        self.font = fonts.find_font()
+
+    def test_emblem_text_round_glow_lettering(self):
+        em = patch.emblem_text("MONI", self.font, 40, (255, 255, 255), (0, 160, 255), ring=(0, 200, 255))
+        self.assertEqual(em.mode, "RGBA")
+        self.assertEqual(em.width, em.height)
+        a = np.asarray(em)
+        self.assertEqual(a[0, 0, 3], 0)  # corner outside the circle is transparent
+        c = em.width // 2
+        self.assertGreater(a[c - 40:c + 40, c - 40:c + 40, 3].max(), 200)  # lettering inside
+        self.assertTrue((a[..., 3] > 200).any())
+
+    def test_emblem_text_ring_optional_and_rejects_bad_font(self):
+        plain = patch.emblem_text("M", self.font, 30, (255, 255, 255), (0, 160, 255))
+        ringed = patch.emblem_text("M", self.font, 30, (255, 255, 255), (0, 160, 255), ring=(255, 0, 0))
+        self.assertNotEqual(np.asarray(plain).tobytes(), np.asarray(ringed).tobytes())
+        with self.assertRaises(FileNotFoundError):
+            patch.emblem_text("M", "/nonexistent/none.ttf", 30, (255, 255, 255), (0, 160, 255))
+
+    def test_fill_from_side_each_side(self):
+        for side, probe, src in (("left", (50, 40), (25, 40)), ("right", (50, 40), (75, 40)),
+                                 ("top", (50, 40), (50, 15)), ("bottom", (50, 40), (50, 65))):
+            im = Image.new("RGB", (100, 80), (0, 0, 0))
+            d = ImageDraw.Draw(im)
+            for i in range(100):
+                d.line([(i, 0), (i, 79)], fill=(i, 100, 0))   # horizontal gradient
+            for j in range(80):
+                if side in ("top", "bottom"):
+                    d.line([(0, j), (99, j)], fill=(j * 3, 0, 50))
+            box = (30, 20, 70, 60)
+            ref = im.getpixel({"left": (29, 40), "right": (70, 40), "top": (50, 19), "bottom": (50, 60)}[side])
+            out = patch.fill_from_side(im, box, side)
+            self.assertIs(out, im)
+            self.assertEqual(im.getpixel(probe), ref)
+
+    def test_fill_from_side_errors(self):
+        im = Image.new("RGB", (100, 80))
+        with self.assertRaisesRegex(ValueError, "side"):
+            patch.fill_from_side(im, (30, 20, 70, 60), "middle")
+        with self.assertRaisesRegex(ValueError, "no pixels"):
+            patch.fill_from_side(im, (0, 20, 40, 60), "left")
+
+
+@unittest.skipUnless(HAVE_CV, "cv2 not importable (use the gaspol-video venv python)")
+class PixelSlotsTest(unittest.TestCase):
+    RECT = [(100, 80), (400, 80), (400, 300), (100, 300)]
+    OCC = (150, 150, 200, 250)
+    OCC_COLOUR = (10, 200, 10)
+
+    def _page(self):
+        im = _magenta_page([self.RECT])
+        ImageDraw.Draw(im).rectangle(self.OCC, fill=self.OCC_COLOUR)
+        return im
+
+    def test_occluder_stays_in_front_of_logo(self):
+        im = self._page()
+        quad = slots.find_slots(im, key="magenta")[0]
+        logo = Image.new("RGBA", (300, 220), (255, 255, 255, 255))
+        out = slots.paste_quad(im, logo, quad, mode="pixel", fit=1.0)
+        self.assertEqual(out.getpixel((175, 200)), self.OCC_COLOUR)   # occluder kept
+        self.assertEqual(out.getpixel((300, 190)), (255, 255, 255))  # logo shows elsewhere
+        flat = slots.paste_quad(im, logo, quad, fit=1.0)
+        self.assertEqual(flat.getpixel((175, 200)), (255, 255, 255))  # flat mode covers it
+
+    def test_fill_slots_pixel_requires_magenta(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.png"
+            Image.new("RGBA", (50, 20), (255, 0, 0, 255)).save(p)
+            with self.assertRaisesRegex(ValueError, "magenta"):
+                slots.fill_slots(self._page(), [p], key="white", mode="pixel")
+            out, quads = slots.fill_slots(self._page(), [p], key="magenta", mode="pixel")
+            self.assertEqual(len(quads), 1)
+            self.assertEqual(out.getpixel((175, 200)), self.OCC_COLOUR)
+
+    def test_paste_quad_bad_mode(self):
+        im = self._page()
+        quad = slots.find_slots(im, key="magenta")[0]
+        with self.assertRaisesRegex(ValueError, "mode"):
+            slots.paste_quad(im, Image.new("RGBA", (5, 5)), quad, mode="nope")
+
+    def test_cli_pixel_mode(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            self._page().save(t / "p.png")
+            Image.new("RGBA", (300, 220), (255, 0, 0, 255)).save(t / "l.png")
+            rc = _quiet_cli(["logo-slots", str(t / "p.png"), str(t / "l.png"), "--key", "magenta", "--mode", "pixel"])
+            self.assertEqual(rc, 0)
+            self.assertEqual(Image.open(t / "p.png").convert("RGB").getpixel((175, 200)), self.OCC_COLOUR)
