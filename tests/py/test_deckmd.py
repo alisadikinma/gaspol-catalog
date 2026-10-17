@@ -61,7 +61,7 @@ class FromPromptsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             write_prompt(d, "slide-01.md", [("headline", "One")])
             write_prompt(d, "notes.md", [("headline", "Nope")])
-            (Path(d) / "manifest.json").write_text("{}")
+            (Path(d) / "manifest.json").write_text('[{"n": 1, "prompt_file": "prompts/slide-01.md"}]')
             (Path(d) / "_rejected").mkdir()
             write_prompt(Path(d) / "_rejected", "slide-03.md", [("headline", "Bad")])
             md = deckmd.from_prompts(d)
@@ -109,5 +109,46 @@ class CliTest(unittest.TestCase):
         self.assertIn("FAIL: no slide-NN.md in", err)
 
 
+class FromPromptsSilentFailureTest(unittest.TestCase):
+    def test_slide_with_no_text_lines_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            write_prompt(d, "slide-01.md", [("headline", "A")])
+            (Path(d) / "slide-02.md").write_text("intro\n\nTEXT:\n\nguard\n")
+            with self.assertRaisesRegex(ValueError, "slide-02.md"):
+                deckmd.from_prompts(d)
+
+    def test_manifest_defines_list_and_order(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            write_prompt(d, "slide-01.md", [("headline", "ONE")])
+            write_prompt(d, "slide-02.md", [("headline", "TWO")])
+            write_prompt(d, "slide-03.md", [("headline", "STRAY")])
+            (Path(d) / "manifest.json").write_text(json.dumps([
+                {"n": 2, "prompt_file": "prompts/slide-02.md"},
+                {"n": 1, "prompt_file": "prompts/slide-01.md"}]))
+            out = deckmd.from_prompts(d)
+            self.assertNotIn("STRAY", out)
+            self.assertLess(out.index("TWO"), out.index("ONE"))
+
+    def test_manifest_entry_without_file_raises(self):
+        import json
+        with tempfile.TemporaryDirectory() as d:
+            write_prompt(d, "slide-01.md", [("headline", "ONE")])
+            (Path(d) / "manifest.json").write_text(json.dumps([
+                {"n": 1, "prompt_file": "prompts/slide-01.md"},
+                {"n": 2, "prompt_file": "prompts/slide-02.md"}]))
+            with self.assertRaisesRegex(ValueError, "slide-02.md"):
+                deckmd.from_prompts(d)
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class ManifestShapeTest(unittest.TestCase):
+    def test_non_list_manifest_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            write_prompt(d, "slide-01.md", [("headline", "ONE")])
+            (Path(d) / "manifest.json").write_text("{}")
+            with self.assertRaisesRegex(ValueError, "manifest"):
+                deckmd.from_prompts(d)

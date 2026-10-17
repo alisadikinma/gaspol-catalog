@@ -56,7 +56,10 @@ def resolve(explicit=None, start=None, env=None):
         if src.is_file():
             m = _KEY_LINE.search(src.read_text(encoding="utf-8"))
             if m:
-                return _must_exist(_expand(m.group(1), env), str(src))
+                path = _expand(m.group(1), env)
+                if not path.is_absolute():
+                    path = d / path   # relative to the project that wrote it, not to the caller's cwd
+                return _must_exist(path, str(src))
     return None
 
 

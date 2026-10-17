@@ -158,5 +158,21 @@ class IsometrikTerangPresetTest(unittest.TestCase):
         self.assertNotIn("indusia", f.read_text(encoding="utf-8").lower())
 
 
+class RelativeHouseStandardTest(unittest.TestCase):
+    def test_relative_path_resolves_against_context_sources_dir_not_cwd(self):
+        import os
+        with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as other:
+            root = Path(d).resolve()
+            (root / ".gaspol").mkdir()
+            (root / ".gaspol" / "context-sources.md").write_text("house-standard: stds/house.md\n")
+            (root / "stds").mkdir()
+            (root / "stds" / "house.md").write_text("x")
+            old = os.getcwd()
+            os.chdir(other)
+            self.addCleanup(os.chdir, old)
+            got = house.resolve(start=root / "sub" if (root / "sub").exists() else root, env={})
+            self.assertEqual(got, root / "stds" / "house.md")
+
+
 if __name__ == "__main__":
     unittest.main()

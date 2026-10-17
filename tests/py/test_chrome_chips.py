@@ -158,6 +158,28 @@ class CliTest(unittest.TestCase):
             self.assertIn("nope", err.getvalue())
 
 
+class ChromeSilentFailureTest(unittest.TestCase):
+    def test_missing_html_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(FileNotFoundError):
+                chrome.shot(Path(d) / "nope.html", Path(d) / "o.png")
+            with self.assertRaises(FileNotFoundError):
+                chrome.print_pdf(Path(d) / "nope.html", Path(d) / "o.pdf")
+            with self.assertRaises(FileNotFoundError):
+                chrome.shot(d, Path(d) / "o.png")
+
+    def test_virtual_time_budget_in_both_commands(self):
+        with tempfile.TemporaryDirectory() as d:
+            html = Path(d) / "a.html"
+            html.write_text("<html></html>")
+            for call in (lambda: chrome.shot(html, Path(d) / "o.png"),
+                         lambda: chrome.print_pdf(html, Path(d) / "o.pdf")):
+                with mock.patch.object(chrome, "_run") as run:
+                    with self.assertRaises(RuntimeError):
+                        call()
+                self.assertIn("--virtual-time-budget=5000", run.call_args.args[0])
+
+
 if __name__ == "__main__":
     unittest.main()
 

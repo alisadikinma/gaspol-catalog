@@ -220,6 +220,43 @@ class CliTest(Base):
         self.assertEqual(err.strip(), "FAIL: no seller: pass --house or set GASPOL_CATALOG_HOUSE")
 
 
+class SilentFailureTest(Base):
+    CTX = {"seller": "ContohAI", "language": "Indonesian", "audience": "a distributor"}
+
+    def test_newline_in_text_rejected_naming_slide_and_role(self):
+        with self.assertRaisesRegex(ValueError, "slide 2.*headline.*newline"):
+            prompts.render_prompt(slide(2, text=[["head", "a\nb"]]), PRESET, self.CTX)
+        with self.assertRaisesRegex(ValueError, "newline"):
+            prompts.render_prompt(slide(2, text=[["head", "a\rb"]]), PRESET, self.CTX)
+
+    def test_guard_without_ai_placeholder_rejected(self):
+        pre = dict(PRESET, guard="RULES {seller}. No people, no faces, no hands. End.")
+        with self.assertRaisesRegex(ValueError, r"\{ai\}"):
+            prompts.render_prompt(slide(1), pre, self.CTX)
+
+    def test_people_clause_missing_from_guard_rejected(self):
+        pre = dict(PRESET, guard="RULES {seller}{ai}. End.")
+        with self.assertRaisesRegex(ValueError, "people_clause_from"):
+            prompts.render_prompt(slide(1, people=True), pre, self.CTX)
+
+    def test_leftover_placeholder_rejected(self):
+        pre = dict(PRESET, style="STYLE {colour} for {seller}.")
+        with self.assertRaisesRegex(ValueError, r"\{colour\}"):
+            prompts.render_prompt(slide(1), pre, self.CTX)
+
+    def test_empty_audience_rejected_when_intro_uses_it(self):
+        with self.assertRaisesRegex(ValueError, "audience"):
+            prompts.render_prompt(slide(1), PRESET, dict(self.CTX, audience=""))
+
+    def test_empty_language_rejected_when_intro_uses_it(self):
+        with self.assertRaisesRegex(ValueError, "language"):
+            prompts.render_prompt(slide(1), PRESET, dict(self.CTX, language=""))
+
+    def test_empty_audience_fine_when_intro_ignores_it(self):
+        pre = dict(PRESET, intro="INTRO {language} {seller}.")
+        self.assertIn("INTRO", prompts.render_prompt(slide(1), pre, dict(self.CTX, audience="")))
+
+
 if __name__ == "__main__":
     unittest.main()
 

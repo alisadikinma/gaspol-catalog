@@ -11,10 +11,23 @@ CANDIDATES = [
 ]
 
 
+def _explicit(path, px):
+    """An explicitly requested font must open; never silently replaced by another."""
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"font file not found: {path}")
+    try:
+        return ImageFont.truetype(path, int(px))
+    except OSError as exc:
+        raise FileNotFoundError(f"font file cannot be opened: {path} ({exc})") from None
+
+
 def load_font(px, path=None):
-    """First font that opens. ``path`` (a .ttf) wins; falls back to PIL's default bitmap font."""
-    for p in ([path] if path else []) + CANDIDATES:
-        if p and os.path.exists(p):
+    """``path`` (a .ttf) must open or FileNotFoundError. With no path: first CANDIDATES font that
+    opens, else PIL's default bitmap font."""
+    if path:
+        return _explicit(path, px)
+    for p in CANDIDATES:
+        if os.path.exists(p):
             try:
                 return ImageFont.truetype(p, int(px))
             except OSError:
@@ -23,10 +36,13 @@ def load_font(px, path=None):
 
 
 def find_font(path=None):
-    """Path of the first font file that opens: ``path`` if given, else the first of CANDIDATES.
-    Raises FileNotFoundError when none opens."""
-    for p in ([path] if path else []) + CANDIDATES:
-        if p and os.path.exists(p):
+    """Path of the font file to use: ``path`` if given (must open), else the first of CANDIDATES
+    that opens. Raises FileNotFoundError when none opens."""
+    if path:
+        _explicit(path, 12)
+        return path
+    for p in CANDIDATES:
+        if os.path.exists(p):
             try:
                 ImageFont.truetype(p, 12)
             except OSError:

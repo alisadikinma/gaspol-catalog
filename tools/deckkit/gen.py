@@ -8,6 +8,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from PIL import Image
+
 ENV_CLIENT = "DECKKIT_IMAGE_CLIENT"
 NO_CLIENT = "no image client: set image_client in the house standard or DECKKIT_IMAGE_CLIENT"
 NO_MODEL = "no model: pass --model or set image_model in the house standard"
@@ -49,6 +51,31 @@ def _accepts_style(generator):
         return False
 
 
+ASPECT = 16 / 9
+ASPECT_TOL = 0.02
+
+
+def _install(src, dest):
+    """Verify ``src`` is a whole, 16:9 image and write it to ``dest`` as PNG (converting if needed).
+    Raises ValueError/OSError for anything else, so the caller counts it as a failed attempt."""
+    with Image.open(src) as im:
+        im.verify()
+    with Image.open(src) as im:
+        im.load()
+        w, h = im.size
+        if not h or abs(w / h - ASPECT) > ASPECT * ASPECT_TOL:
+            raise ValueError(f"{w}x{h} is not 16:9")
+        part = dest.with_name(dest.name + ".part")
+        try:
+            if im.format == "PNG":
+                shutil.copyfile(src, part)
+            else:
+                im.save(part, "PNG")
+            os.replace(part, dest)
+        finally:
+            part.unlink(missing_ok=True)
+
+
 def _one(item, root, generator, out_dir, raw_dir, ver, tries, kw, with_style):
     n = item["n"]
     name = f"{n:02d}-{ver}.png" if ver else f"slide-{n:02d}.png"
@@ -72,7 +99,11 @@ def _one(item, root, generator, out_dir, raw_dir, ver, tries, kw, with_style):
         m = _LOCAL.search(r)
         if r.startswith("OK") and m and Path(m.group(1)).is_file():
             out_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy(m.group(1), dest)
+            try:
+                _install(m.group(1), dest)
+            except Exception as exc:
+                last = f"bad image: {type(exc).__name__}: {exc}"
+                continue
             return n, "OK"
         last = r
     return n, f"FAIL {last[:200]}"
@@ -90,6 +121,9 @@ def run(manifest_path, generator, out_dir=None, raw_dir=None, ver=None, only=Non
     raw_dir.mkdir(parents=True, exist_ok=True)
     items = json.loads(manifest_path.read_text(encoding="utf-8"))
     if only:
+        missing = [n for n in only if n not in {i["n"] for i in items}]
+        if missing:
+            raise ValueError(f"--only: no such slide n: {', '.join(str(n) for n in missing)}")
         items = [i for i in items if i["n"] in set(only)]
     kw = {"model": model, "mode": mode, "resolution": resolution}
     with_style = _accepts_style(generator)

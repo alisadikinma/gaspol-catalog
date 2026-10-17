@@ -1,5 +1,6 @@
 """deck.md -> standalone HTML review page; prompts/slide-NN.md -> deck.md text."""
 import html
+import json
 import re
 from pathlib import Path
 
@@ -128,17 +129,28 @@ def review_html(md_text, title):
 def from_prompts(prompts_dir):
     """Markdown with one `## Slide NN` section per prompts/slide-NN.md, quoted TEXT lines as bullets."""
     d = Path(prompts_dir)
-    found = sorted(((int(m.group(1)), p) for p in d.glob("slide-*.md")
-                    if p.is_file() and (m := _SLIDE.match(p.name))), key=lambda t: t[0])
+    manifest = d / "manifest.json"
+    if manifest.is_file():   # the manifest is the slide list and order; a stray file in the dir is not a slide
+        items = json.loads(manifest.read_text(encoding="utf-8"))
+        if not isinstance(items, list):
+            raise ValueError(f"{manifest} must be a JSON list of slides")
+        found = [(int(it["n"]), d / Path(it["prompt_file"]).name) for it in items]
+        for _, p in found:
+            if not p.is_file():
+                raise ValueError(f"manifest lists {p.name} but it is not in {prompts_dir}")
+    else:
+        found = sorted(((int(m.group(1)), p) for p in d.glob("slide-*.md")
+                        if p.is_file() and (m := _SLIDE.match(p.name))), key=lambda t: t[0])
     if not found:
         raise ValueError(f"no slide-NN.md in {prompts_dir}")
     out = ["# Deck text", "", "> Taken from the prompt files, so this text and the rendered text cannot differ.", ""]
     for n, p in found:
         out.append(f"## Slide {n:02d}")
         out.append("")
-        for line in p.read_text(encoding="utf-8").splitlines():
-            m = _TEXT_LINE.match(line)
-            if m:
-                out.append(f"- {m.group(1)}: {m.group(2)}")
+        texts = [f"- {m.group(1)}: {m.group(2)}" for line in p.read_text(encoding="utf-8").splitlines()
+                 if (m := _TEXT_LINE.match(line))]
+        if not texts:
+            raise ValueError(f"{p.name} has no quoted TEXT lines")
+        out += texts
         out.append("")
     return "\n".join(out)

@@ -120,5 +120,24 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 1)
 
 
+class SilentFailureTest(unittest.TestCase):
+    def test_bar_core_near_background_raises(self):
+        img = Image.new("RGB", (W, H), (100, 133, 127))
+        for y0, y1 in BARS_Y:
+            img.paste((85, 133, 127), (BAR_X, y0, BAR_X + BAR_W, y1))
+        with self.assertRaisesRegex(ValueError, "bar 0"):
+            recolour.bars(img, WANT)
+
+    def test_unverifiable_result_raises(self):
+        from unittest import mock
+        with mock.patch.object(recolour, "VERIFY_TOL", -1):
+            with self.assertRaisesRegex(ValueError, "bar 0"):
+                recolour.bars(page(), WANT)
+
+    def test_normal_page_still_verifies(self):
+        out = recolour.bars(page(), WANT)
+        self.assertEqual(out.size, (W, H))
+
+
 if __name__ == "__main__":
     unittest.main()

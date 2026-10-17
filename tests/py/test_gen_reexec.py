@@ -56,8 +56,34 @@ class ReexecTest(unittest.TestCase):
             exe, args, env = ex.call_args.args
             self.assertEqual(exe, str(py))
             self.assertEqual(args[:3], [str(py), "-m", "tools.deckkit"])
-            self.assertEqual(args[3:], argv)
+            self.assertEqual(args[3:], argv)   # already absolute, passed through unchanged
             self.assertEqual(env[gen.ENV_REEXEC], "1")
+            root = str(Path(cli.__file__).resolve().parents[2])
+            self.assertIn(root, env["PYTHONPATH"].split(os.pathsep))
+
+    def test_relative_paths_made_absolute_and_no_chdir(self):
+        with tempfile.TemporaryDirectory() as d:
+            man, house, py = _project(Path(d), Path(d) / "client")
+            old = os.getcwd()
+            os.chdir(d)
+            self.addCleanup(os.chdir, old)
+            cwd = os.getcwd()
+            argv = ["gen", "prompts/manifest.json", "--house", "house.md", "--out", "r", "--raw=m",
+                    "--only", "1"]
+            with mock.patch.dict(os.environ, {"PYTHONPATH": "/keep/me"}), \
+                    mock.patch.object(os, "execve") as ex, mock.patch.object(os, "chdir") as cd, \
+                    contextlib.redirect_stderr(io.StringIO()):
+                os.environ.pop(gen.ENV_REEXEC, None)
+                cli.main(argv)
+            cd.assert_not_called()
+            _, args, env = ex.call_args.args
+            self.assertEqual(args[3:], ["gen", os.path.join(cwd, "prompts/manifest.json"),
+                                        "--house", os.path.join(cwd, "house.md"),
+                                        "--out", os.path.join(cwd, "r"),
+                                        "--raw=" + os.path.join(cwd, "m"), "--only", "1"])
+            parts = env["PYTHONPATH"].split(os.pathsep)
+            self.assertEqual(parts[1:], ["/keep/me"])
+            self.assertEqual(parts[0], str(Path(cli.__file__).resolve().parents[2]))
 
     def test_no_second_rerun(self):
         with tempfile.TemporaryDirectory() as d:

@@ -11,9 +11,15 @@ from unittest import mock
 from tools.deckkit import __main__ as cli
 from tools.deckkit import gen
 
-PNG = bytes.fromhex(
-    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
-    "0000000d49444154789c6360000002000001e221bc330000000049454e44ae426082")
+def _png():
+    import io as _io
+    from PIL import Image
+    b = _io.BytesIO()
+    Image.new("RGB", (160, 90), (200, 30, 30)).save(b, "PNG")
+    return b.getvalue()
+
+
+PNG = _png()
 
 
 class Base(unittest.TestCase):
@@ -246,6 +252,52 @@ class CliTest(Base):
         m = self.manifest()
         rc, out, _ = self.run_cli(["gen", str(m), "--house", str(self.house()), "--only", "2"])
         self.assertEqual(out.strip(), "02 OK")
+
+
+class SilentFailureTest(Base):
+    def gen_with(self, data_for_attempt, tries=1, ver=None):
+        files = []
+        def g(prompt, model, mode, aspect, resolution, output_format, output_dir, refs):
+            i = len(self.calls)
+            self.calls.append(1)
+            p = self.root / f"out{i}.bin"
+            p.write_bytes(data_for_attempt(i))
+            files.append(p)
+            return f"OK local: {p}"
+        return gen.run(self.manifest(ns=(1,)), g, model="m", tries=tries, ver=ver)
+
+    def test_only_unknown_slide_raises(self):
+        with self.assertRaisesRegex(ValueError, "9"):
+            gen.run(self.manifest(), self.fake(), model="m", only=[2, 9])
+
+    def test_square_png_is_failed_attempt(self):
+        from PIL import Image
+        import io as _io
+        b = _io.BytesIO()
+        Image.new("RGB", (100, 100)).save(b, "PNG")
+        res = self.gen_with(lambda i: b.getvalue())
+        self.assertTrue(res[0][1].startswith("FAIL bad image"), res)
+        self.assertFalse((self.root / "renders" / "slide-01.png").exists())
+
+    def test_zero_byte_and_corrupt_fail(self):
+        for data in (b"", b"not an image at all"):
+            res = self.gen_with(lambda i: data)
+            self.assertTrue(res[0][1].startswith("FAIL bad image"), res)
+
+    def test_bad_then_good_retries(self):
+        res = self.gen_with(lambda i: b"" if i == 0 else PNG, tries=2)
+        self.assertEqual(res, [(1, "OK")])
+        self.assertEqual(len(self.calls), 2)
+
+    def test_jpeg_converted_to_png_on_copy(self):
+        from PIL import Image
+        import io as _io
+        b = _io.BytesIO()
+        Image.new("RGB", (160, 90), "red").save(b, "JPEG")
+        res = self.gen_with(lambda i: b.getvalue())
+        self.assertEqual(res, [(1, "OK")])
+        with Image.open(self.root / "renders" / "slide-01.png") as im:
+            self.assertEqual(im.format, "PNG")
 
 
 if __name__ == "__main__":

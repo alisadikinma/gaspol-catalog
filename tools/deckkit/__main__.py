@@ -15,6 +15,36 @@ def _grid(spec):
     return c, r
 
 
+PATH_FLAGS = ("--house", "--out", "--raw")
+
+
+def _abs(p):
+    from . import house
+    return os.path.abspath(str(house._expand(p, os.environ)))
+
+
+def _absolutize(args, manifest):
+    """Copy of ``args`` with the manifest and every --house/--out/--raw value made absolute,
+    so the re-run in another interpreter does not depend on the caller's cwd."""
+    out, want_value, seen = [], False, False
+    for t in args:
+        if want_value:
+            out.append(_abs(t))
+            want_value = False
+        elif t in PATH_FLAGS:
+            out.append(t)
+            want_value = True
+        elif t.partition("=")[0] in PATH_FLAGS and "=" in t:
+            k, _, v = t.partition("=")
+            out.append(f"{k}={_abs(v)}")
+        elif not seen and t == manifest:
+            out.append(_abs(t))
+            seen = True
+        else:
+            out.append(t)
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="deckkit", description="Post-render deck tooling.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -132,6 +162,10 @@ def main(argv=None):
             size = tuple(int(v) for v in a.page_size.split("x")) if a.page_size else None
             pages = pdf.list_pages(a.src, a.pattern, a.skip)
             opts = None
+            if a.grid and not a.watermark:
+                raise ValueError("--grid needs --watermark text (grid places that text at cell centres)")
+            if a.watermark_logo and a.watermark:
+                raise ValueError("logo watermark cannot be combined with text/grid: use --watermark-logo or --watermark")
             if a.watermark or a.corner or a.watermark_logo:
                 opts = {"text": a.watermark or "", "corner_text": a.corner}
                 if a.watermark_logo:
@@ -168,6 +202,8 @@ def main(argv=None):
             print(f"{len(names)} pages banded")
         elif a.cmd == "unmark":
             from . import watermark
+            if a.grid and not a.watermark:
+                raise ValueError("--grid needs --watermark text (grid places that text at cell centres)")
             dark = None if a.dark is None else a.dark == "yes"
             watermark.unmark(Image.open(a.src), dark=dark, text=a.watermark, corner_text=a.corner,
                              grid=_grid(a.grid) if a.grid else None).save(a.dst)
@@ -260,9 +296,11 @@ def main(argv=None):
                     raise
                 # the client's packages live in its own venv: run this same command there, once
                 print(f"image client needs its own environment, re-running with {py}", file=sys.stderr)
-                os.chdir(Path(__file__).resolve().parents[2])
-                args = list(sys.argv[1:] if argv is None else argv)
-                os.execve(py, [py, "-m", "tools.deckkit", *args], {**os.environ, gen.ENV_REEXEC: "1"})
+                root = str(Path(__file__).resolve().parents[2])
+                args = _absolutize(list(sys.argv[1:] if argv is None else argv), a.manifest)
+                env = {**os.environ, gen.ENV_REEXEC: "1",
+                       "PYTHONPATH": os.pathsep.join([root, *filter(None, [os.environ.get("PYTHONPATH")])])}
+                os.execve(py, [py, "-m", "tools.deckkit", *args], env)
                 return 1
             res = gen.run(mp, generator, out_dir=a.out, raw_dir=a.raw, ver=a.ver, only=a.only or None,
                           workers=a.workers, tries=a.tries, model=model,

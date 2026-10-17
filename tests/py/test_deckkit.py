@@ -196,6 +196,67 @@ class QuadSlotsTest(unittest.TestCase):
             self.assertEqual(Image.open(t / "p.png").convert("RGB").getpixel((240, 190)), (255, 0, 0))
 
 
+class SilentFailureWatermarkTest(unittest.TestCase):
+    def test_mark_rejects_unknown_option(self):
+        with self.assertRaisesRegex(TypeError, r"unknown watermark option\(s\): \['txt'\]"):
+            watermark.mark(page(), txt="X")
+
+    def test_unmark_rejects_unknown_option(self):
+        with self.assertRaisesRegex(TypeError, "unknown watermark option"):
+            watermark.unmark(page(), opacitiy=3)
+
+    def test_grid_without_text_raises(self):
+        with self.assertRaisesRegex(ValueError, "grid needs"):
+            watermark.mark(page(), text="", grid=(2, 2))
+
+    def test_logo_with_text_or_grid_raises(self):
+        with self.assertRaisesRegex(ValueError, "logo watermark cannot be combined with text/grid"):
+            watermark.mark(page(), logo="x.png", text="DECK")
+        with self.assertRaisesRegex(ValueError, "logo watermark cannot be combined with text/grid"):
+            watermark.mark(page(), logo="x.png", text="", grid=(2, 2))
+
+    def test_cli_grid_without_watermark_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            t = Path(d)
+            src = t / "src"
+            src.mkdir()
+            page().save(src / "01.png")
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(t / "o.pdf"), "--grid", "3x4", "--corner", "C"]), 1)
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(t / "o.pdf"), "--grid", "3x4"]), 1)
+            page().save(t / "m.png")
+            self.assertEqual(_quiet_cli(["unmark", str(t / "m.png"), str(t / "u.png"), "--watermark", "", "--grid", "3x4"]), 1)
+
+    def test_cli_logo_with_text_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            t = Path(d)
+            src = t / "src"
+            src.mkdir()
+            page().save(src / "01.png")
+            Image.new("RGBA", (40, 20), (0, 0, 0, 255)).save(t / "l.png")
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(t / "o.pdf"), "--watermark", "X",
+                                         "--watermark-logo", str(t / "l.png")]), 1)
+
+
+class SilentFailureFontTest(unittest.TestCase):
+    def test_explicit_missing_font_raises(self):
+        with self.assertRaises(FileNotFoundError):
+            fonts.load_font(20, "/nonexistent/none.ttf")
+        with self.assertRaises(FileNotFoundError):
+            fonts.find_font("/nonexistent/none.ttf")
+
+    def test_explicit_unopenable_font_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            bad = Path(d) / "bad.ttf"
+            bad.write_text("not a font")
+            with self.assertRaises(FileNotFoundError):
+                fonts.load_font(20, str(bad))
+            with self.assertRaises(FileNotFoundError):
+                fonts.find_font(str(bad))
+
+    def test_no_path_still_falls_back(self):
+        self.assertIsNotNone(fonts.load_font(20))
+
+
 if __name__ == "__main__":
     unittest.main()
 

@@ -24,6 +24,7 @@ DEFAULT_PRESET = "isometrik-terang"
 GOOD_BG, GOOD_FG = (223, 243, 228), (20, 96, 43)
 BAD_BG, BAD_FG = (253, 226, 224), (161, 33, 26)
 WHITE, ROW_ALT, LINE = (255, 255, 255), (246, 249, 248), (211, 222, 223)
+PALETTE_KEYS = ("background", "navy", "teal", "body", "good_bg", "good_fg", "bad_bg", "bad_fg")
 MARKS = ("good", "bad")
 BAND_FRACTION = 0.065  # bottom share of the page left empty for the footer band
 REF_W = 2752  # design width; every length below scales with size[0] / REF_W
@@ -41,7 +42,11 @@ def _hex(value, name):
 
 def _colours(spec):
     pal = dict(house.load_preset(spec.get("preset") or DEFAULT_PRESET).get("palette", {}))
-    pal.update(spec.get("palette") or {})
+    over = spec.get("palette") or {}
+    bad = sorted(set(over) - set(PALETTE_KEYS))
+    if bad:
+        raise ValueError(f"unknown palette key(s) {bad}; allowed: {', '.join(PALETTE_KEYS)}")
+    pal.update(over)
     out = {}
     for key in ("background", "navy", "teal", "body"):
         if key not in pal:
@@ -100,7 +105,9 @@ def _layout(spec, size, font_path):
     cw = xs[1] - xs[0] - 2 * pad
 
     ft = fonts.load_font(max(8, int(H * 0.05)), path)
-    title_lines = _wrap(spec.get("title", ""), ft, x1 - x0) or [str(spec.get("title", ""))]
+    title_lines = _wrap(spec.get("title", ""), ft, x1 - x0)
+    if title_lines is None:
+        raise ValueError("title does not fit: a word is wider than the page")
     ty0 = int(H * 0.045)
     tlh = int(ft.size * 1.2)
     top = ty0 + tlh * len(title_lines) + int(H * 0.04)
@@ -116,7 +123,7 @@ def _layout(spec, size, font_path):
     for px in range(smax, smin - 1, -1):
         font = fonts.load_font(px, path)
         lh = int(px * 1.24)
-        cells, ok = {}, True
+        cells, ok = {}, all(font.getlength(str(n)) <= cw for n in spec["columns"])
         for r, row in enumerate(spec["rows"]):
             for c, text in enumerate(row):
                 lines = _wrap(text, font, cw)
@@ -158,6 +165,9 @@ def _raise_unfit(spec, path, smin, cw, avail, vpad):
     """Name the cell that blocks the layout at the minimum font size."""
     font = fonts.load_font(smin, path)
     lh = int(smin * 1.24)
+    for c, name in enumerate(spec["columns"]):
+        if font.getlength(str(name)) > cw:
+            raise ValueError(f"column {c} header {str(name)!r} does not fit: wider than the column at the minimum size ({smin}px)")
     tallest, where = -1, None
     for r, row in enumerate(spec["rows"]):
         for c, text in enumerate(row):

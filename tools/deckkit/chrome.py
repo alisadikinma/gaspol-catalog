@@ -43,19 +43,26 @@ def _run(args, timeout):
         raise RuntimeError(f"Chrome exited {res.returncode}: {tail}")
 
 
+BUDGET = "--virtual-time-budget=5000"   # let scripts, fonts and images settle before capture
+
+
 def _url(html_path):
-    return Path(html_path).resolve().as_uri()
+    p = Path(html_path)
+    if not p.is_file():
+        raise FileNotFoundError(f"html file not found: {html_path}")
+    return p.resolve().as_uri()
 
 
 def shot(html_path, out_png, size=(2752, 1536), timeout=120):
     """Screenshot ``html_path`` at exactly ``size`` pixels. Larger output is cropped, smaller raises."""
     w, h = size
+    url = _url(html_path)
     out = Path(out_png)
     out.parent.mkdir(parents=True, exist_ok=True)
     if out.exists():
         out.unlink()
     _run(["--headless=new", "--hide-scrollbars", "--force-device-scale-factor=1",
-          f"--window-size={w},{h}", f"--screenshot={out}", _url(html_path)], timeout)
+          BUDGET, f"--window-size={w},{h}", f"--screenshot={out}", url], timeout)
     if not out.is_file():
         raise RuntimeError(f"Chrome wrote no screenshot to {out}")
     with Image.open(out) as im:
@@ -71,11 +78,12 @@ def shot(html_path, out_png, size=(2752, 1536), timeout=120):
 
 def print_pdf(html_path, out_pdf, timeout=120):
     """Print ``html_path`` to a PDF, no header or footer."""
+    url = _url(html_path)
     out = Path(out_pdf)
     out.parent.mkdir(parents=True, exist_ok=True)
     if out.exists():
         out.unlink()
-    _run(["--headless=new", "--no-pdf-header-footer", f"--print-to-pdf={out}", _url(html_path)], timeout)
+    _run(["--headless=new", "--no-pdf-header-footer", BUDGET, f"--print-to-pdf={out}", url], timeout)
     if not out.is_file():
         raise RuntimeError(f"Chrome wrote no PDF to {out}")
     return str(out)

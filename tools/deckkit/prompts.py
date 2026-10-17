@@ -1,6 +1,7 @@
 """Slide spec (slides.json) + style preset + house standard -> prompts/slide-NN.md + manifest.json."""
 import json
 import os
+import re
 from pathlib import Path
 
 from . import house as house_mod
@@ -23,6 +24,8 @@ def _text_lines(slide, preset):
         role = roles.get(role, role)
         if '"' in value:
             raise ValueError(f'slide {n}, role "{role}": text contains a straight double quote')
+        if "\n" in value or "\r" in value:
+            raise ValueError(f'slide {n}, role "{role}": text contains a newline')
         out.append((role, value))
     return out
 
@@ -30,11 +33,18 @@ def _text_lines(slide, preset):
 def render_prompt(slide, preset, ctx):
     """One prompt string in the fixed block order. ctx keys: seller, language, audience."""
     def fill(s):
+        for key in ("language", "audience"):
+            if "{" + key + "}" in s and not str(ctx.get(key) or "").strip():
+                raise ValueError(f"slide {slide.get('n')}: preset uses {{{key}}} but {key} is empty or missing")
         return (s.replace("{seller}", ctx["seller"]).replace("{language}", ctx["language"])
                 .replace("{audience}", ctx["audience"]))
 
+    if "{ai}" not in preset["guard"]:
+        raise ValueError("preset guard has no {ai} placeholder: the AI clause could never apply")
     guard = preset["guard"].replace("{ai}", preset["ai_clause"] if slide.get("ai") else "")
     if slide.get("people"):
+        if preset["people_clause_from"] not in guard:
+            raise ValueError(f"slide {slide.get('n')}: people is set but people_clause_from is not in the preset guard")
         guard = guard.replace(preset["people_clause_from"], preset["people_clause_to"])
     style = fill(preset["style"])
     if slide.get("extra"):
@@ -48,7 +58,11 @@ def render_prompt(slide, preset, ctx):
         f"{preset['text_header']}\n{lines}",
         fill(guard),
     ]
-    return "\n\n".join(blocks)
+    prompt = "\n\n".join(blocks)
+    left = re.search(r"\{[a-z_]+\}", prompt)
+    if left:
+        raise ValueError(f"slide {slide.get('n')}: unfilled placeholder {left.group(0)} in the prompt")
+    return prompt
 
 
 def _check_spec(slides, preset):

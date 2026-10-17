@@ -180,5 +180,22 @@ class CliTest(unittest.TestCase):
         self.assertEqual(rc, 1)
 
 
+class SilentFailureTest(unittest.TestCase):
+    def test_header_wider_than_column_raises_naming_column(self):
+        spec = dict(SPEC, columns=["Item", "Ours", "Supercalifragilisticexpialidocious" * 3])
+        with self.assertRaisesRegex(ValueError, "column 2"):
+            table.render(spec, size=SIZE)
+
+    def test_title_word_wider_than_page_raises(self):
+        spec = dict(SPEC, title="W" * 400)
+        with self.assertRaisesRegex(ValueError, "title"):
+            table.render(spec, size=SIZE)
+
+    def test_unknown_palette_key_raises_listing_allowed(self):
+        spec = dict(SPEC, palette={"backgroud": "#ffffff"})
+        with self.assertRaisesRegex(ValueError, r"backgroud.*allowed.*background"):
+            table.render(spec, size=SIZE)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -124,8 +124,19 @@ def _corner_mask(size, o, font_path=None):
     return m
 
 
+def _options(opts):
+    bad = set(opts) - set(DEFAULTS)
+    if bad:
+        raise TypeError(f"unknown watermark option(s): {sorted(bad)}")
+    return {**DEFAULTS, **opts}
+
+
 def _masks(size, o, font_path, logo=None, grid=None):
     ms = []
+    if logo and (o["text"] or grid):
+        raise ValueError("logo watermark cannot be combined with text/grid")
+    if grid and not o["text"]:
+        raise ValueError("grid needs watermark text (grid places the text at cell centres)")
     if logo:
         ms.append(_logo_mask(size, o, logo))
     elif o["text"] and grid:
@@ -146,7 +157,9 @@ def mark(im, font_path=None, ink=None, logo=None, grid=None, **opts):
 
     ``logo`` = path of a logo image tiled diagonally in place of the text (tinted with the page
     ink). ``grid=(cols, rows)`` puts the text at cell centres instead of free tiling."""
-    o = {**DEFAULTS, **opts}
+    if logo and "text" not in opts:
+        opts = {**opts, "text": ""}   # a logo replaces the text tile; only an explicit text conflicts
+    o = _options(opts)
     im = im.convert("RGB")
     rgb = np.asarray(im).astype(np.float64)
     colour = np.array(_ink(im, o, ink), dtype=np.float64)
@@ -161,7 +174,7 @@ def unmark(im, font_path=None, ink=None, dark=None, logo=None, grid=None, **opts
     from the marked page. Integer rounding in the original leaves ±1-2 levels of error."""
     if logo:
         raise ValueError("logo watermark is not reversible")
-    o = {**DEFAULTS, **opts}
+    o = _options(opts)
     im = im.convert("RGB")
     if ink is None and dark is not None:
         ink = o["light_ink"] if dark else o["dark_ink"]
