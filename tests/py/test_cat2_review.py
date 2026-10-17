@@ -345,6 +345,36 @@ class StaleRenderTest(Tmp):
         res = gen.run(self.man(), self.g, model="m")
         self.assertTrue(res[0][1].startswith("stale"))
 
+    def test_hand_edit_of_prompt_file_is_stale(self):
+        """Re-review B: a revision edits the prompt file; the manifest sha must not hide it."""
+        self.build([slide(2)])
+        gen.run(self.man(), self.g, model="m")
+        pf = self.dir / "prompts" / "slide-02.md"
+        pf.write_text(pf.read_text().replace("Judul 2", "Judul Dua"), encoding="utf-8")
+        res = gen.run(self.man(), self.g, model="m")
+        self.assertTrue(res[0][1].startswith("stale"), res)
+        self.assertEqual(self.calls, 1)
+
+    def test_render_after_hand_edit_then_exists(self):
+        """Re-review B reverse: a fresh render from a hand-edited file is not reported stale later."""
+        self.build([slide(2)])
+        pf = self.dir / "prompts" / "slide-02.md"
+        pf.write_text(pf.read_text().replace("Judul 2", "Judul Dua"), encoding="utf-8")
+        self.assertEqual(gen.run(self.man(), self.g, model="m"), [(2, "OK")])
+        self.assertEqual(gen.run(self.man(), self.g, model="m"), [(2, "exists")])
+
+    def test_revision_log_not_sent_to_model(self):
+        """Re-review A: the REVISION LOG names old defect text; the model must never see it."""
+        self.build([slide(2, log="hapus Hemat 30 persen ganda")])
+        sent = []
+        def g(**kw):
+            sent.append(kw["prompt"])
+            return f"OK local: {self.src}"
+        gen.run(self.man(), g, model="m")
+        self.assertNotIn("REVISION LOG", sent[0])
+        self.assertNotIn("Hemat 30 persen", sent[0])
+        self.assertIn("Judul 2", sent[0])
+
     def test_cli_stale_exit_1(self):
         self.build([slide(2)])
         h = self.dir / "house.md"

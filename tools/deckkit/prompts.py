@@ -12,11 +12,18 @@ LOG_HEADING = "REVISION LOG"
 _LOG_RE = re.compile(r"^REVISION LOG[ \t]*$", re.M)
 
 
-def prompt_sha(text):
-    """sha256 of a prompt file's text without its REVISION LOG section (a log edit is not a prompt change)."""
+def prompt_body(text):
+    """A prompt file's text without its REVISION LOG section: what the image model is sent.
+
+    The log names old defect text (a dropped number, a duplicated line); sent to the model it
+    could be printed, so it never leaves the file."""
     m = _LOG_RE.search(text)
-    body = text[:m.start()] if m else text
-    return hashlib.sha256(body.rstrip("\n").encode("utf-8")).hexdigest()
+    return (text[:m.start()] if m else text).rstrip("\n")
+
+
+def prompt_sha(text):
+    """sha256 of ``prompt_body(text)`` (a log edit is not a prompt change)."""
+    return hashlib.sha256(prompt_body(text).encode("utf-8")).hexdigest()
 
 
 def _log_lines(text):

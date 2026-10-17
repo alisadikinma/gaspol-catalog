@@ -85,7 +85,8 @@ Each prompt file ends with a **revision log** (a final `REVISION LOG` heading):
 one line per regeneration, what changed and which defect forced it. `deckkit prompts`
 keeps every existing log line when it rewrites a file and adds a dated line from the
 slide's `log` field. Without that line the same guard gets deleted again next
-month by someone tidying up a long prompt. The
+month by someone tidying up a long prompt. `deckkit gen` never sends the log to the
+image model: it names old defect text, which the model could print. The
 instructions may be written in English; **every string that will be printed is quoted
 in the deck's own language, character for character.**
 

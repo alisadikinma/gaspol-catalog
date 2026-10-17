@@ -10,7 +10,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from .prompts import prompt_sha
+from .prompts import prompt_body, prompt_sha
 
 ENV_CLIENT = "DECKKIT_IMAGE_CLIENT"
 NO_CLIENT = "no image client: set image_client in the house standard or DECKKIT_IMAGE_CLIENT"
@@ -87,16 +87,19 @@ def _sidecar(dest):
 
 
 def _existing_status(dest, item, pf):
-    """'exists' or STALE for a render already on disk. Compared with the manifest sha when it has
-    one, else (only when a sidecar exists) with the prompt file on disk."""
+    """'exists' or STALE for a render already on disk.
+
+    The sidecar records the sha of the prompt actually sent, so it is compared with the prompt
+    file on disk (a revision edits that file, hard rule 7), never with the manifest sha, which a
+    hand edit leaves behind. A render with no sidecar is STALE when the manifest carries a sha
+    (it cannot be tied to this prompt), else 'exists' (a manifest from before sha tracking)."""
     side = _sidecar(dest)
-    rendered = side.read_text(encoding="utf-8").strip() if side.is_file() else None
-    want = item.get("sha")
-    if want is None and rendered is not None and pf.is_file():
-        want = prompt_sha(pf.read_text(encoding="utf-8"))
-    if want is None:
-        return "exists"
-    return "exists" if rendered == want else STALE
+    if not side.is_file():
+        return STALE if item.get("sha") else "exists"
+    if not pf.is_file():
+        return f"FAIL missing prompt {pf}"
+    rendered = side.read_text(encoding="utf-8").strip()
+    return "exists" if rendered == prompt_sha(pf.read_text(encoding="utf-8")) else STALE
 
 
 def _one(item, root, generator, out_dir, raw_dir, ver, tries, kw, with_style):
@@ -109,7 +112,7 @@ def _one(item, root, generator, out_dir, raw_dir, ver, tries, kw, with_style):
     if not pf.is_file():
         return n, f"FAIL missing prompt {pf}"
     text = pf.read_text(encoding="utf-8")
-    prompt = text
+    prompt = prompt_body(text)
     extra = {"style": "None"} if with_style else {}
     last = "no attempt"
     for _ in range(max(1, tries)):
