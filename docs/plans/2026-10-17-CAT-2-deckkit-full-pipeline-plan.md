@@ -601,6 +601,29 @@ a subcommand registered in `__main__.py` (parse `sub.add_parser("<cmd>"`).
 - [ ] `bash tests/run-all.sh` prints `ALL GREEN`
 - [ ] No placeholder/TODO comments in new code
 
+### Phase R: Spec items left out of Phase I/J (added 2026-10-17 after plan-verifier)
+
+**Estimated time:** 15 minutes
+
+**Files:**
+- Modify: `tools/deckkit/patch.py` (add `emblem_text`, `fill_from_side`)
+- Modify: `tools/deckkit/slots.py` (`paste_quad(..., mode="pixel")` / `fill_slots(..., mode="pixel")`), `__main__.py` (`logo-slots --mode pixel`)
+- Modify: `docs/tool-routing.md`, `docs/deckkit.md`
+- Test: `tests/py/test_deckkit.py`
+
+**Steps:**
+1. Write failing test for `patch.emblem_text`, `patch.fill_from_side` and slots `mode="pixel"`. Expected error: `AttributeError: module 'tools.deckkit.patch' has no attribute 'emblem_text'`.
+2. Run, confirm failure.
+3. Port: `emblem_text(text, font_path, size, core, glow, ring=None, ...)` from `MONI/render/tools/patch.py` (glowing text inside a round emblem; reuse `glow_text`); `fill_from_side(img, box, side="left"|"right"|"top"|"bottom")` from `C3/finalize.py` (repeat the edge column/row next to the box across it). `mode="pixel"` from `SPS/tempel_25.py`: paste the logo through the quad but only onto pixels that were magenta (objects drawn in front of the slot stay in front); only valid with `key="magenta"`, else `ValueError`.
+4. Run tests, confirm pass; update routing/docs rows (Module `patch` / `slots`).
+5. Commit: `feat(deckkit): emblem_text, fill_from_side, pixel-occluded slot paste (CAT-2)`
+
+**Verification:**
+- [ ] `PY -m unittest discover -s tests/py -t . -v` passes
+- [ ] `bash tests/run-all.sh` prints `ALL GREEN`
+- [ ] Pixel mode test: an occluder drawn over part of a magenta slot keeps its colour after paste
+- [ ] No placeholder/TODO comments in new code
+
 ## Out of scope
 
 - The 12 one-off scripts (`EKA/susun_19.py`, `EKA/tambal_15.py`, `MONI/render/tools/badge.py`, `build_v5.py`, `unflag_arc1.py`, `MONI/brd/render/build.py`, `CAT0/stamp_office.py`, `CAT0/revisi_2026_09_15.py`, `C3/finalize.py`, `C3/tambal.py`, `SPS/tempel_14.py`, `SPS/tempel_15.py`) stay in their folders; only their generic helpers are ported (Phases G–O).

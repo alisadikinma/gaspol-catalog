@@ -55,9 +55,11 @@ Extensions to existing modules (a parameter, not a new tool):
 Registry and uniqueness:
 
 - `docs/tool-routing.md` is the registry: "I want to… → use". `docs/deckkit.md` holds details.
-- New test: every deckkit module with a public job has exactly one routing row, and every
-  routing row points to an existing module/subcommand. A tool without a row, or a row without
-  a tool, fails the test. This is the anti-duplicate guard.
+- New test: one job = one routing row. Every deckkit module with a public job has at least one
+  row (a module may serve several distinct jobs, e.g. `pdf` for the full and the public
+  version), every row points to an existing module/subcommand, and no two rows name the same
+  job. A tool without a row, a row without a tool, or a job listed twice fails the test. This
+  is the anti-duplicate guard.
 - `tests/guard-generic.sh` extends to scan `tools/` for client names and absolute home paths.
 
 ### Part 2 — style reference
@@ -120,7 +122,10 @@ Registry and uniqueness:
 - Routing-registry test (above). `guard-generic.sh` over `tools/`.
 - `bash tests/run-all.sh` green.
 - One real check: rebuild one Ekaputra slide prompt with `deckkit prompts` from a spec and
-  diff against the existing `prompts/slide-02.md` — the style and guard blocks must match.
+  diff against the existing `prompts/slide-02.md` — block order and the TEXT block format
+  must match. The STYLE block is the generic form of Ekaputra's: the deck-specific cold-chain
+  mapping (frozen/chilled/dry) is dropped, and two sentences fix the reference-image order
+  (first = seller wordmark, second = style source).
 
 ### Out of scope
 
