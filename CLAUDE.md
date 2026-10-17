@@ -198,7 +198,7 @@ section of `catalog-gate` define the contract.
 ## gaspol Ticket Counter
 
 Prefix: CAT
-Last ticket: CAT-1
+Last ticket: CAT-2
 
 ## Tool-first rule (deckkit)
 
