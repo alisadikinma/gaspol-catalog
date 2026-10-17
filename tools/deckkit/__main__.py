@@ -51,6 +51,15 @@ def main(argv=None):
     s.add_argument("--number-fmt", default="{n} / {total}", help="number text, uses {n} and {total}")
     s.add_argument("--fit-canvas", help="WxH: letterbox each page to this size before banding")
 
+    s = sub.add_parser("review", help="deck.md -> HTML review page")
+    s.add_argument("deck")
+    s.add_argument("out")
+    s.add_argument("--title", default="Deck review")
+
+    s = sub.add_parser("deckmd", help="prompts dir -> deck.md text")
+    s.add_argument("prompts_dir")
+    s.add_argument("out")
+
     s = sub.add_parser("unmark", help="invert a previous watermark (same text/options)")
     s.add_argument("src")
     s.add_argument("dst")
@@ -158,6 +167,17 @@ def main(argv=None):
             watermark.unmark(Image.open(a.src), dark=dark, text=a.watermark, corner_text=a.corner,
                              grid=_grid(a.grid) if a.grid else None).save(a.dst)
             print(a.dst)
+        elif a.cmd == "review":
+            from pathlib import Path
+            from . import deckmd
+            md = Path(a.deck).read_text(encoding="utf-8")
+            Path(a.out).write_text(deckmd.review_html(md, a.title), encoding="utf-8")
+            print(a.out)
+        elif a.cmd == "deckmd":
+            from pathlib import Path
+            from . import deckmd
+            Path(a.out).write_text(deckmd.from_prompts(a.prompts_dir), encoding="utf-8")
+            print(a.out)
         elif a.cmd == "erase-footer":
             from . import erase
             r = erase.erase_footer(a.image, a.needle)

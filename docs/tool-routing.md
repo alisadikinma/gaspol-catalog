@@ -21,6 +21,8 @@ and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` need
 | Real photo into a photo well or empty circle | `deckkit photo IMG PHOTO --box x,y,w,h [--radius R] [--circle]` | `photo` |
 | Recolour the accent bars beside text points | `deckkit recolour IMG --colours "#2c5d99" "#a8712a" ...` | `recolour` |
 | Comparison table page with exact numbers (drawn, not rendered) | `deckkit table spec.json out.png` | `table` |
+| deck.md -> HTML review page for the human | `deckkit review DECK.md OUT.html [--title T]` | `deckmd` |
+| Prompt files -> deck.md text (what the slides will say) | `deckkit deckmd PROMPTS_DIR OUT.md` | `deckmd` |
 | Fix a few words in a rendered page without re-rendering | `tools/deckkit/patch.py`: `ink_bbox`, `fit`, `render_text`, `paste_text`, `blend_fill`, `glow_text`, `replace_line` (swap one line at the old cap height and ink colour; `squeeze` for tight boxes), `lerp_fill`, `erase_between`, `size_for_cap`, `baseline_for_top` | `patch` |
 
 Rule of thumb: patch, do not re-roll. Re-rendering a page re-rolls every approved string on it.
