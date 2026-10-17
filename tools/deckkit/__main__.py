@@ -40,7 +40,7 @@ def main(argv=None):
     s.add_argument("--corner", default="")
     s.add_argument("--dark", choices=["yes", "no"], help="ink was light (dark page) or dark")
 
-    s = sub.add_parser("erase-footer", help="OCR + inpaint away a footer tag, e.g. 'INDUSIA'")
+    s = sub.add_parser("erase-footer", help="OCR + inpaint away a footer tag, e.g. 'ACME'")
     s.add_argument("image")
     s.add_argument("needle")
 

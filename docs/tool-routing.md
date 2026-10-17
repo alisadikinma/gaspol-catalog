@@ -5,18 +5,17 @@ logos), find the task below. Run from the plugin root with the venv python that 
 and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` needs `python-pptx`,
 `erase-footer` needs `tesseract` on PATH.
 
-| I want to... | Use |
-|---|---|
-| Pages folder -> PDF (one page size, optional watermark) | `deckkit pdf SRC OUT [--watermark TEXT --corner CONFIDENTIAL --page-size WxH --skip ...]` |
-| Public version without price pages | `deckkit pdf ... --skip 18.png 19.png` |
-| Pages -> PPTX (16:9, clean pages) | `deckkit pptx OUT images...` |
-| Page numbers from filenames (+ wordmark) | `deckkit stamp SRC DST [--wordmark logo.png]` (never bake numbers into prompts) |
-| Footer band: confidentiality line + logo lockup | `deckkit band SRC DST --text "..." --logos a.png b.png` |
-| Undo a watermark baked into finals | `deckkit unmark SRC DST --watermark TEXT --corner TEXT` (same options as `pdf`) |
-| Remove a baked-in footer tag or page number | `deckkit erase-footer IMG NEEDLE` |
-| Real logos into blank white boxes the model left | `deckkit logo-slots IMG logos...` (left to right) |
-| Fix a few words in a rendered page without re-rendering | `tools/deckkit/patch.py`: `ink_bbox`, `fit`, `render_text`, `paste_text`, `blend_fill`, `glow_text` |
-| Rendering the page images themselves | `catalog-visual` skill + image MCP, not deckkit |
+| I want to... | Use | Module |
+|---|---|---|
+| Pages folder -> PDF (one page size, optional watermark) | `deckkit pdf SRC OUT [--watermark TEXT --corner CONFIDENTIAL --page-size WxH --skip ...]` | `pdf` |
+| Public version without price pages | `deckkit pdf ... --skip 18.png 19.png` | `pdf` |
+| Pages -> PPTX (16:9, clean pages) | `deckkit pptx OUT images...` | `pptx` |
+| Page numbers from filenames (+ wordmark) | `deckkit stamp SRC DST [--wordmark logo.png]` (never bake numbers into prompts) | `stamp` |
+| Footer band: confidentiality line + logo lockup | `deckkit band SRC DST --text "..." --logos a.png b.png` | `band` |
+| Undo a watermark baked into finals | `deckkit unmark SRC DST --watermark TEXT --corner TEXT` (same options as `pdf`) | `watermark` |
+| Remove a baked-in footer tag or page number | `deckkit erase-footer IMG NEEDLE` | `erase` |
+| Real logos into blank white boxes the model left | `deckkit logo-slots IMG logos...` (left to right) | `slots` |
+| Fix a few words in a rendered page without re-rendering | `tools/deckkit/patch.py`: `ink_bbox`, `fit`, `render_text`, `paste_text`, `blend_fill`, `glow_text` | `patch` |
 
 Rule of thumb: patch, do not re-roll. Re-rendering a page re-rolls every approved string on it.
 

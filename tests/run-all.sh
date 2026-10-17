@@ -9,5 +9,12 @@ for t in deps-present.sh research-contract.sh guard-generic.sh \
   echo "=== $t"
   bash "$t" || rc=1
 done
+PY="$HOME/.gaspol-video/venv/bin/python"
+if [ -x "$PY" ]; then
+  echo "=== python unittest"
+  (cd .. && "$PY" -m unittest discover -s tests/py -t .) || rc=1
+else
+  echo "SKIP python (venv absent)"
+fi
 [ "$rc" -eq 0 ] && echo "ALL GREEN" || echo "SOME RED"
 exit "$rc"
