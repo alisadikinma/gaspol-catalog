@@ -120,5 +120,81 @@ class SlotsTest(unittest.TestCase):
             self.assertEqual(im.getpixel((750, 150)), (0, 0, 255))
 
 
+def _quiet_cli(argv):
+    import contextlib
+    import io
+    from tools.deckkit import __main__ as cli
+    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        return cli.main(argv)
+
+
+MAGENTA = (255, 0, 255)
+
+
+def _magenta_page(polys, size=(900, 400)):
+    im = Image.new("RGB", size, (20, 40, 80))
+    d = ImageDraw.Draw(im)
+    for poly in polys:
+        d.polygon(poly, fill=MAGENTA)
+    return im
+
+
+@unittest.skipUnless(HAVE_CV, "cv2 not importable (use the gaspol-video venv python)")
+class QuadSlotsTest(unittest.TestCase):
+    PARA = [(100, 80), (400, 100), (380, 300), (80, 280)]
+
+    def test_find_slots_magenta_corners(self):
+        quads = slots.find_slots(_magenta_page([self.PARA]), key="magenta")
+        self.assertEqual(len(quads), 1)
+        for got, want in zip(quads[0], self.PARA):
+            self.assertLessEqual(abs(got[0] - want[0]), 3)
+            self.assertLessEqual(abs(got[1] - want[1]), 3)
+
+    def test_two_slots_sorted_left_to_right(self):
+        right = [(600, 80), (800, 80), (800, 300), (600, 300)]
+        quads = slots.find_slots(_magenta_page([right, self.PARA]), key="magenta")
+        self.assertEqual(len(quads), 2)
+        self.assertLess(quads[0][0][0], quads[1][0][0])
+
+    def test_paste_quad_leaves_no_magenta(self):
+        im = _magenta_page([self.PARA])
+        quad = slots.find_slots(im, key="magenta")[0]
+        logo = Image.new("RGBA", (120, 40), (255, 255, 255, 255))
+        for plate in (None, (10, 10, 10)):
+            out = slots.paste_quad(im, logo, quad, plate=plate)
+            xs = [p[0] for p in quad]
+            ys = [p[1] for p in quad]
+            a = np.asarray(out.convert("RGB"))[min(ys):max(ys) + 1, min(xs):max(xs) + 1].astype(int)
+            dist = np.sqrt(((a - np.array(MAGENTA)) ** 2).sum(2))
+            self.assertGreaterEqual(dist.min(), 40)
+        self.assertEqual(out.getpixel((240, 190)), (255, 255, 255))
+        self.assertEqual(im.getpixel((240, 190)), MAGENTA)
+
+    def test_white_key_matches_find_white_slots(self):
+        im = Image.new("RGB", (900, 300), (20, 40, 80))
+        d = ImageDraw.Draw(im)
+        for x in (50, 350, 650):
+            d.rectangle((x, 50, x + 200, 250), fill=(255, 255, 255))
+        boxes = slots.find_white_slots(im, 0.002)
+        quads = slots.find_slots(im, key="white")
+        self.assertEqual([(q[0][0], q[0][1], q[2][0] - q[0][0] + 1, q[2][1] - q[0][1] + 1) for q in quads], boxes)
+
+    def test_fill_slots_quad_count_mismatch(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = Path(t) / "l.png"
+            Image.new("RGBA", (50, 20), (255, 0, 0, 255)).save(p)
+            with self.assertRaisesRegex(ValueError, "found 1 slots, got 2 logos"):
+                slots.fill_slots(_magenta_page([self.PARA]), [p, p], key="magenta", mode="quad")
+
+    def test_cli_magenta_quad(self):
+        with tempfile.TemporaryDirectory() as t:
+            t = Path(t)
+            _magenta_page([self.PARA]).save(t / "p.png")
+            Image.new("RGBA", (120, 40), (255, 0, 0, 255)).save(t / "l.png")
+            rc = _quiet_cli(["logo-slots", str(t / "p.png"), str(t / "l.png"), "--key", "magenta", "--mode", "quad"])
+            self.assertEqual(rc, 0)
+            self.assertEqual(Image.open(t / "p.png").convert("RGB").getpixel((240, 190)), (255, 0, 0))
+
+
 if __name__ == "__main__":
     unittest.main()

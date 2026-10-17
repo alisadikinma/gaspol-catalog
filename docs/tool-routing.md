@@ -16,7 +16,8 @@ and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` need
 | Footer band: confidentiality line + logo lockup | `deckkit band SRC DST --text "..." --logos a.png b.png` | `band` |
 | Undo a watermark baked into finals | `deckkit unmark SRC DST --watermark TEXT --corner TEXT` (same options as `pdf`) | `watermark` |
 | Remove a baked-in footer tag or page number | `deckkit erase-footer IMG NEEDLE` | `erase` |
-| Real logos into blank white boxes the model left | `deckkit logo-slots IMG logos...` (left to right) | `slots` |
+| Real logos into blank white boxes the model left | `deckkit logo-slots IMG logos...` (left to right; `--key` white or magenta, `--mode` flat or quad) | `slots` |
+| Logo onto a tilted screen or panel (magenta or white slot) | `deckkit logo-slots IMG logo.png --key magenta --mode quad` | `slots` |
 | Real photo into a photo well or empty circle | `deckkit photo IMG PHOTO --box x,y,w,h [--radius R] [--circle]` | `photo` |
 | Recolour the accent bars beside text points | `deckkit recolour IMG --colours "#2c5d99" "#a8712a" ...` | `recolour` |
 | Fix a few words in a rendered page without re-rendering | `tools/deckkit/patch.py`: `ink_bbox`, `fit`, `render_text`, `paste_text`, `blend_fill`, `glow_text` | `patch` |

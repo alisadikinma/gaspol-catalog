@@ -47,6 +47,8 @@ def main(argv=None):
     s = sub.add_parser("logo-slots", help="paste logos into blank white boxes, left to right")
     s.add_argument("image")
     s.add_argument("logos", nargs="+")
+    s.add_argument("--key", choices=["white", "magenta"], default="white", help="slot colour (default white)")
+    s.add_argument("--mode", choices=["flat", "quad"], default="flat", help="flat paste, or quad = perspective warp onto a tilted slot")
 
     s = sub.add_parser("photo", help="cover-crop a real photo into a box or circle")
     s.add_argument("image")
@@ -118,7 +120,7 @@ def main(argv=None):
             return 1 if r is None else 0
         elif a.cmd == "logo-slots":
             from . import slots
-            img, used = slots.fill_slots(Image.open(a.image), a.logos)
+            img, used = slots.fill_slots(Image.open(a.image), a.logos, key=a.key, mode=a.mode)
             img.save(a.image)
             print(f"{len(used)} logos placed")
         elif a.cmd == "photo":

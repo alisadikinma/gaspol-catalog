@@ -14,7 +14,7 @@ Distilled from the deck folders of finished catalogs and pitch decks. Run
 | `band` | `add_band`: footer band with a text line and a logo lockup. |
 | `patch` | `ink_bbox`, `fit` (size by cap height, tracking by width), `render_text`, `paste_text`, `blend_fill` (Laplace inpaint), `glow_text`. |
 | `erase` | `erase_footer`: OCR (tesseract) + OpenCV inpaint of a baked-in footer tag. |
-| `slots` | `find_white_slots`, `fill_slots`: paste real logos into blank white boxes. |
+| `slots` | `find_white_slots`, `find_slots` (white or magenta, quads), `paste_quad` (perspective paste), `fill_slots` (`key`, `mode`): paste real logos into blank white or magenta slots. |
 | `photo` | `cover`, `place`, `circle`: cover-crop a real photo into a rounded box or circle. |
 | `recolour` | `bars`: find thin vertical accent bars right of `x_from`, recolour top to bottom; antialiasing kept. Count mismatch raises. |
 
