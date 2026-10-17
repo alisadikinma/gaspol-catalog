@@ -48,6 +48,14 @@ def main(argv=None):
     s.add_argument("image")
     s.add_argument("logos", nargs="+")
 
+    s = sub.add_parser("photo", help="cover-crop a real photo into a box or circle")
+    s.add_argument("image")
+    s.add_argument("photo")
+    s.add_argument("--box", required=True, help="x,y,w,h (with --circle: its centre and min(w,h)/2 are used)")
+    s.add_argument("--radius", type=int, default=0, help="corner radius in px (clamped to half the short side)")
+    s.add_argument("--circle", action="store_true", help="circular mask instead of a rounded box")
+    s.add_argument("--out", help="output path (default: overwrite IMAGE)")
+
     s = sub.add_parser("prompts", help="slide spec -> prompt files + manifest")
     s.add_argument("spec")
     s.add_argument("--house", help="house standard file (else $GASPOL_CATALOG_HOUSE or .gaspol/context-sources.md)")
@@ -106,6 +114,20 @@ def main(argv=None):
             img, used = slots.fill_slots(Image.open(a.image), a.logos)
             img.save(a.image)
             print(f"{len(used)} logos placed")
+        elif a.cmd == "photo":
+            from . import photo
+            try:
+                x, y, w, h = (int(v) for v in a.box.split(","))
+            except ValueError:
+                raise ValueError(f"--box needs four integers x,y,w,h, got {a.box!r}") from None
+            with Image.open(a.image) as page, Image.open(a.photo) as pic:
+                if a.circle:
+                    res = photo.circle(page, pic, (x + w // 2, y + h // 2), min(w, h) // 2)
+                else:
+                    res = photo.place(page, pic, (x, y, w, h), radius=a.radius)
+            out = a.out or a.image
+            res.save(out)
+            print(out)
         elif a.cmd == "prompts":
             from pathlib import Path
             from . import house, prompts
