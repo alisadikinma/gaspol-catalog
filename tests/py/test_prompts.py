@@ -222,3 +222,26 @@ class CliTest(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+FIXTURE = Path(__file__).parent / "fixtures" / "slides-parity.json"
+
+
+class ParityTest(unittest.TestCase):
+    """Block order and TEXT-line format of a real deck's prompt (problem slide, isometric style)."""
+
+    def test_layout_matches_real_deck_prompt(self):
+        with tempfile.TemporaryDirectory() as d:
+            n = prompts.build(FIXTURE, house=HOUSE, out_dir=d)
+            self.assertEqual(n, 1)
+            blocks = (Path(d) / "slide-02.md").read_text().strip().split("\n\n")
+        prefixes = ["A finished 16:9", "LAYOUT:", "VISUAL:", "STYLE:", "TEXT (print exactly", "RULES:"]
+        self.assertEqual(len(blocks), len(prefixes), blocks)
+        for block, prefix in zip(blocks, prefixes):
+            self.assertTrue(block.startswith(prefix), (prefix, block[:60]))
+        self.assertIn("for a B2B offer from ContohAI to a food distributor.", blocks[0])
+        text_lines = blocks[4].splitlines()[1:]
+        self.assertEqual(text_lines[0], '- eyebrow, small caps burnt orange: "PERMASALAHAN 1 · GUDANG"')
+        self.assertEqual(len(text_lines), 8)
+        for line in text_lines:
+            self.assertRegex(line, r'^- [^:"]+: "[^"]+"$')

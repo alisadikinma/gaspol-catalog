@@ -1,0 +1,27 @@
+{
+  "audience": "a food distributor",
+  "client": "PT Contoh",
+  "ref_dir": ".",
+  "slides": [
+    {
+      "n": 2,
+      "sid": "masalah-gudang",
+      "layout": "Top: eyebrow and headline across the full width. Below: left 65% the reference illustration large; right 35% three stacked points, each with a burnt-orange left bar, bold title line and one grey detail line. Roughly 70% of the canvas is illustration, 30% text.",
+      "visual": "The cluttered manual warehouse from the reference: unlabeled cartons, mixed batches, no location markers. Use the attached reference image(s) as the illustration and style source.",
+      "text": [
+        ["eye_problem", "PERMASALAHAN 1 · GUDANG"],
+        ["head", "SistemLama tahu berapa stoknya. Belum tahu di rak mana, batch apa, dan kapan expired."],
+        ["point 1 title", "SistemLama sudah pegang"],
+        ["point 1 detail", "Stok per gudang, nilai persediaan, faktur"],
+        ["point 2 title", "Belum tercatat"],
+        ["point 2 detail", "Rak mana, batch apa, kapan expired"],
+        ["point 3 title", "Akibatnya"],
+        ["point 3 detail", "Petugas ambil barang dari ingatan. Yang expired duluan belum tentu keluar duluan."]
+      ],
+      "refs": [],
+      "ai": false,
+      "people": false,
+      "extra": ""
+    }
+  ]
+}
