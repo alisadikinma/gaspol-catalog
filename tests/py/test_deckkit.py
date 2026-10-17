@@ -292,3 +292,64 @@ class FillHelpersTest(unittest.TestCase):
         s = patch.size_for_cap(font, 30)
         b = patch.baseline_for_top(font, s, 100)
         self.assertLessEqual(abs((b - 100) - 30), 1)
+
+
+def _logo_png(path):
+    lg = Image.new("RGBA", (80, 40), (0, 0, 0, 0))
+    ImageDraw.Draw(lg).rectangle([4, 4, 75, 35], fill=(10, 90, 160, 255))
+    lg.save(path)
+
+
+class WatermarkLogoGridTest(unittest.TestCase):
+    def test_logo_mode_marks_several_separated_regions(self):
+        with tempfile.TemporaryDirectory() as t:
+            lp = Path(t) / "logo.png"
+            _logo_png(lp)
+            im = page((900, 600))
+            out = watermark.mark(im, logo=str(lp), text="", corner_text="")
+        diff = np.abs(np.asarray(out).astype(int) - np.asarray(im).astype(int)).max(axis=2) > 2
+        self.assertGreater(diff.sum(), 0)
+        # count blobs by coarse 150px cells that hold changes, then require spread
+        cells = {(y // 150, x // 150) for y, x in zip(*np.nonzero(diff))}
+        self.assertGreaterEqual(len(cells), 3)
+
+    def test_grid_round_trip_light_and_dark(self):
+        for im in (page(), page(colour=(20, 24, 40))):
+            marked = watermark.mark(im, text="DECK", corner_text="", grid=(3, 4))
+            self.assertGreater(np.abs(np.asarray(marked).astype(int) - np.asarray(im).astype(int)).max(), 5)
+            back = watermark.unmark(marked, text="DECK", corner_text="", grid=(3, 4), dark=watermark.is_dark(im))
+            err = np.abs(np.asarray(back).astype(int) - np.asarray(im).astype(int))
+            self.assertLessEqual(err.max(), 2)
+
+    def test_grid_places_text_in_every_cell(self):
+        im = page((600, 800), (240, 240, 240))
+        out = watermark.mark(im, text="DECK", corner_text="", grid=(3, 4))
+        diff = np.abs(np.asarray(out).astype(int) - np.asarray(im).astype(int)).max(axis=2) > 2
+        for r in range(4):
+            for c in range(3):
+                self.assertTrue(diff[r * 200:(r + 1) * 200, c * 200:(c + 1) * 200].any(), (r, c))
+
+    def test_logo_unmark_refused(self):
+        with self.assertRaisesRegex(ValueError, "logo watermark is not reversible"):
+            watermark.unmark(page(), logo="x.png")
+
+    def test_cli_pdf_with_watermark_logo(self):
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "pages"
+            src.mkdir()
+            page((400, 300)).save(src / "01.png")
+            lp = Path(t) / "logo.png"
+            _logo_png(lp)
+            out = Path(t) / "o.pdf"
+            rc = _quiet_cli(["pdf", str(src), str(out), "--watermark-logo", str(lp)])
+            self.assertEqual(rc, 0)
+            self.assertTrue(out.read_bytes().startswith(b"%PDF"))
+
+    def test_cli_pdf_grid_flag(self):
+        with tempfile.TemporaryDirectory() as t:
+            src = Path(t) / "pages"
+            src.mkdir()
+            page((400, 300)).save(src / "01.png")
+            out = Path(t) / "o.pdf"
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(out), "--watermark", "X", "--grid", "3x4"]), 0)
+            self.assertEqual(_quiet_cli(["pdf", str(src), str(out), "--watermark", "X", "--grid", "bad"]), 1)

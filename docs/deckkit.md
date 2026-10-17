@@ -7,7 +7,7 @@ Distilled from the deck folders of finished catalogs and pitch decks. Run
 
 | Module | What |
 |---|---|
-| `watermark` | `mark` / `unmark`: tiled diagonal watermark and corner mark, REVERSIBLE (alpha composite is inverted per pixel). Ink white on dark pages, charcoal on light, sampled from the page. |
+| `watermark` | `mark` / `unmark`: tiled diagonal text watermark (or `grid=(cols, rows)` cell-centred text) and corner mark, REVERSIBLE (alpha composite is inverted per pixel). `logo=PATH` tiles a logo at 12% in the page ink instead; logo mode is NOT reversible (`unmark` raises ValueError). Ink white on dark pages, charcoal on light, sampled from the page. |
 | `pdf` | `list_pages`, `build_pdf`: one page size, optional watermark, skip list. Pillow's own writer, no img2pdf. |
 | `pptx` | `build_pptx`: one full-bleed picture per 16:9 slide. |
 | `stamp` | `stamp_dir`: numeral from the filename, footer colour sampled, optional white wordmark. |

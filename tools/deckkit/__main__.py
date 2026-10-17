@@ -5,6 +5,14 @@ import sys
 from PIL import Image
 
 
+def _grid(spec):
+    try:
+        c, r = (int(v) for v in spec.lower().split("x"))
+    except ValueError:
+        raise ValueError(f"--grid needs CxR like 3x4, got {spec!r}") from None
+    return c, r
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="deckkit", description="Post-render deck tooling.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -14,6 +22,8 @@ def main(argv=None):
     s.add_argument("out")
     s.add_argument("--watermark", help="tile text (enables the watermark)")
     s.add_argument("--corner", default="", help="corner text, e.g. CONFIDENTIAL")
+    s.add_argument("--watermark-logo", help="logo image tiled diagonally as the watermark (enables it; not reversible)")
+    s.add_argument("--grid", help="CxR: put the watermark text at the centre of each grid cell, e.g. 3x4")
     s.add_argument("--page-size", help="WxH every page is scaled to, e.g. 2752x1536")
     s.add_argument("--skip", nargs="*", default=[], help="page filenames to leave out")
     s.add_argument("--pattern", default=r"\d{2}\.png|slide-\d+\.png")
@@ -38,6 +48,7 @@ def main(argv=None):
     s.add_argument("dst")
     s.add_argument("--watermark", required=True)
     s.add_argument("--corner", default="")
+    s.add_argument("--grid", help="CxR, if the mark was applied with --grid")
     s.add_argument("--dark", choices=["yes", "no"], help="ink was light (dark page) or dark")
 
     s = sub.add_parser("erase-footer", help="OCR + inpaint away a footer tag, e.g. 'ACME'")
@@ -91,7 +102,13 @@ def main(argv=None):
             from . import pdf
             size = tuple(int(v) for v in a.page_size.split("x")) if a.page_size else None
             pages = pdf.list_pages(a.src, a.pattern, a.skip)
-            opts = {"text": a.watermark or "", "corner_text": a.corner} if (a.watermark or a.corner) else None
+            opts = None
+            if a.watermark or a.corner or a.watermark_logo:
+                opts = {"text": a.watermark or "", "corner_text": a.corner}
+                if a.watermark_logo:
+                    opts["logo"] = a.watermark_logo
+                if a.grid:
+                    opts["grid"] = _grid(a.grid)
             print(f"{pdf.build_pdf(pages, a.out, size, mark_opts=opts)} pages -> {a.out}")
         elif a.cmd == "pptx":
             from . import pptx
@@ -111,7 +128,8 @@ def main(argv=None):
         elif a.cmd == "unmark":
             from . import watermark
             dark = None if a.dark is None else a.dark == "yes"
-            watermark.unmark(Image.open(a.src), dark=dark, text=a.watermark, corner_text=a.corner).save(a.dst)
+            watermark.unmark(Image.open(a.src), dark=dark, text=a.watermark, corner_text=a.corner,
+                             grid=_grid(a.grid) if a.grid else None).save(a.dst)
             print(a.dst)
         elif a.cmd == "erase-footer":
             from . import erase
