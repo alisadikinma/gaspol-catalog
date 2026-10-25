@@ -49,6 +49,10 @@ description: Fifth phase of gaspol-catalog, run only after catalog-gate layer on
 - `../../references/b2b/b2b-deck-architecture.md` — which act each slide belongs to,
   which slides carry a chapter marker and which carry none, the impact slide.
 - `brand.md`, `deck.md`, and `review.md` — the source, verbatim.
+- The nearest `ref/contoh.md` (deck folder or any parent): renders the human rejected and
+  approved, one line each with the reason. **Open every image it lists with Read before
+  writing a prompt.** A new prompt must not reproduce what a rejected image shows. Missing
+  file → note "no contoh.md" in the run output and go on.
 
 ## Reuse (installed skills — optional, degrade gracefully)
 

@@ -10,6 +10,7 @@ and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` need
 |---|---|---|
 | Slide spec -> prompt files + manifest | `deckkit prompts slides.json --house H` | `prompts` |
 | Prompt files -> slide images (image MCP) | `deckkit gen prompts/manifest.json --ver r1` (writes `renders/r1/NN.png`; a render whose prompt changed is `stale`, never overwritten) | `gen` |
+| Block a render that names a real place/object without its photo | `deckkit refgate prompts/manifest.json` (exit 1 lists slide, name, missing ref; `gen` runs it first, `--no-refgate REASON` skips; entities in `ref/real-refs.json` of the deck or any parent folder) | `refgate` |
 | Pages folder -> PDF (one page size, optional watermark) | `deckkit pdf SRC OUT [--watermark TEXT --watermark-logo LOGO.png --grid 3x4 --corner CONFIDENTIAL --page-size WxH --skip ...]` | `pdf` |
 | Public version without price pages | `deckkit pdf ... --skip 18.png 19.png` | `pdf` |
 | Pages -> PPTX (16:9, clean pages) | `deckkit pptx OUT images... [--transition fade] [--jpeg-quality 92]` | `pptx` |

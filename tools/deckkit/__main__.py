@@ -166,6 +166,11 @@ def main(argv=None):
     s.add_argument("--out", help="output dir (default: <project>/renders)")
     s.add_argument("--raw", help="raw generator dir (default: <project>/.tmp/mentah)")
     s.add_argument("--resolution", default="2K")
+    s.add_argument("--no-refgate", metavar="REASON",
+                   help="skip the real-place/object photo check (say why; e.g. Ali approved a drawn stand-in)")
+
+    s = sub.add_parser("refgate", help="slides that name a registered real place/object without its photo ref")
+    s.add_argument("manifest")
 
     a = ap.parse_args(argv)
     try:
@@ -301,10 +306,25 @@ def main(argv=None):
             out = Path(a.out) if a.out else Path(a.spec).resolve().parent / "prompts"
             n = prompts.build(a.spec, house=h, preset=a.preset, out_dir=out, only=a.only or None, house_path=hp)
             print(f"{n} prompt -> {out}")
+        elif a.cmd == "refgate":
+            from . import refgate
+            rows = refgate.check(a.manifest)
+            if rows:
+                print(refgate.format_rows(rows))
+                return 1
+            print("refgate: every named real place/object has its photo ref")
+            return 0
         elif a.cmd == "gen":
             from pathlib import Path
-            from . import gen, house
+            from . import gen, house, refgate
             mp = Path(a.manifest).resolve()
+            if not a.no_refgate:
+                rows = refgate.check(mp)
+                if rows:
+                    raise refgate.Refused("refgate: add the photo ref (or pass --no-refgate REASON):\n"
+                                          + refgate.format_rows(rows))
+            elif not a.no_refgate.strip():
+                raise ValueError("--no-refgate needs a reason")
             hp = house.resolve(explicit=a.house, start=mp.parent)
             h = house.load(hp) if hp else {}
             model = a.model or h.get("image_model")
