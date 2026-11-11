@@ -32,6 +32,7 @@ decks. Run
 | `deckmd` | `review_html(md_text, title)`: standalone phone-readable HTML, one card per `#`/`##` section, all text escaped. `from_prompts(dir)`: `## Slide NN` sections (numeric order) with the quoted TEXT lines of each `slide-NN.md` as `- role: text` bullets; skips other files and `_rejected/`; no slide file raises `ValueError("no slide-NN.md in <dir>")`. |
 | `chrome` | `find_chrome` ($CHROME_BIN, PATH names, macOS app), `shot` (HTML -> PNG at an exact size, crops extra pixels, raises if smaller), `print_pdf`. Temp profile, 120 s timeout. CLI `shot`. |
 | `chips` | `pill` (RGBA label with rounded ends), `flag` (equal stripes, `h` or `v`). Library only, no CLI. |
+| `vidbridge` | `deckkit vidkit paste, erase, retint or inpaint ...`: runs gaspol-video's own photo tool in a child process (no copy; both plugins name their package `tools`, so the child puts the gaspol-video root first on `sys.path`). Root: `$GASPOL_VIDEO_ROOT`, else the sibling checkout `../gaspol-video`, else the highest installed version beside this plugin in the plugin cache. The tool's exit code is returned as is. |
 
 ## Not folded in
 

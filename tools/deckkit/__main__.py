@@ -241,7 +241,18 @@ def main(argv=None):
     s = sub.add_parser("refgate", help="slides that name a registered real place/object without its photo ref")
     s.add_argument("manifest")
 
+    from . import vidbridge
+    s = sub.add_parser("vidkit", help="run a gaspol-video photo tool (paste, erase, retint, inpaint) on a still")
+    s.add_argument("tool", choices=vidbridge.COMMANDS)
+    s.add_argument("rest", nargs=argparse.REMAINDER, help="arguments of the vidkit tool (see its --help)")
+
     a = ap.parse_args(argv)
+    if a.cmd == "vidkit":
+        try:
+            return vidbridge.run(a.tool, a.rest)
+        except FileNotFoundError as exc:
+            print(f"FAIL: {exc}", file=sys.stderr)
+            return 1
     try:
         if a.cmd == "repage":
             from . import repage

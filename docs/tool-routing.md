@@ -30,6 +30,10 @@ and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` need
 | Logo onto a tilted screen or panel (magenta or white slot) | `deckkit logo-slots IMG logo.png --key magenta --mode quad` | `slots` |
 | Logo onto a magenta slot with an object drawn in front of it (hand, device edge) | `deckkit logo-slots IMG logo.png --key magenta --mode pixel` (pastes only where the slot was magenta) | `slots` |
 | App screenshot onto a magenta phone screen with rounded corners, a notch, or an object in front of it | `deckkit logo-quads spec.json` with `"mode": "pixel", "trim": false, "fit": 1.0, "plate": null` and a hand-measured quad; render the screenshot at the quad's aspect | `slots` |
+| Paste a product, device or sign plate onto a rendered page in perspective, with a contact shadow (or clone a figure already on the page) | `deckkit vidkit paste PAGE OBJECT.png OUT --box x,y,width` or `--quad x,y;x,y;x,y;x,y` `[--shadow 0.45 --blur 1.5 --whole --from-box x0,y0,x1,y1]` (runs gaspol-video's `vidkit paste`, not a copy) | `vidbridge` |
+| Erase an object or a stray part from a rendered page (fill from the clean rows above) | `deckkit vidkit erase ...` (see `deckkit vidkit erase --help`) | `vidbridge` |
+| Move a background colour family of a render or photo to the brand colour (royal blue -> navy) | `deckkit vidkit retint IN OUT --to "#071A33" [--hue 200-260 --min-sat 0.30 --strength 1.0 --preview p.jpg]` | `vidbridge` |
+| Remove a thin line (crack, wire, scratch) from a photo along a traced path | `deckkit vidkit inpaint IMG OUT --path "x,y;x,y;..." [--width 24]` | `vidbridge` |
 | Real photo into a photo well or empty circle | `deckkit photo IMG PHOTO --box x,y,w,h [--radius R] [--circle]` | `photo` |
 | Recolour the accent bars beside text points | `deckkit recolour IMG --colours "#2c5d99" "#a8712a" ...` | `recolour` |
 | Comparison table page with exact numbers (drawn, not rendered) | `deckkit table spec.json out.png` | `table` |
