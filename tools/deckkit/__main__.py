@@ -218,6 +218,12 @@ def main(argv=None):
     s.add_argument("data", help="JSON: title, problem, flow, phases, risks, proof, cta, brand")
     s.add_argument("out", help="output PDF")
 
+    s = sub.add_parser("jobdeck", help="HTML deck + slots JSON -> PDF with the cover/CTA text swapped")
+    s.add_argument("deck", help="deck HTML with data-job slots and div.slide[id] slides")
+    s.add_argument("slots", help='JSON {"<slot>": "text, *word* = emphasis"}')
+    s.add_argument("out", help="output PDF")
+    s.add_argument("--timeout", type=float, default=50, help="seconds for the whole render (default 50)")
+
     s = sub.add_parser("prompts", help="slide spec -> prompt files + manifest")
     s.add_argument("spec")
     s.add_argument("--house", help="house standard file (else $GASPOL_CATALOG_HOUSE or .gaspol/context-sources.md)")
@@ -275,6 +281,33 @@ def main(argv=None):
         except (FileNotFoundError, RuntimeError) as exc:
             print(f"FAIL: {exc}", file=sys.stderr)
             return 1
+        return 0
+    if a.cmd == "jobdeck":
+        import json
+        from . import jobdeck
+        try:
+            with open(a.slots, encoding="utf-8") as fh:
+                slots = json.load(fh)
+            if not isinstance(slots, dict):
+                raise ValueError("slots: must be a JSON object")
+            if not os.path.isfile(a.deck):
+                raise ValueError(f"deck: file not found: {a.deck}")
+            with open(a.deck, encoding="utf-8") as fh:
+                jobdeck.fill(fh.read(), slots)
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            print(f"input: {exc}", file=sys.stderr)
+            return 2
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        try:
+            print(jobdeck.render(a.deck, slots, a.out, timeout=a.timeout))
+        except ValueError as exc:      # e.g. a deck with no slides
+            print(str(exc), file=sys.stderr)
+            return 2
+        except Exception as exc:       # Chrome, PIL, disk: anything the render itself raised
+            print(f"FAIL: {exc}", file=sys.stderr)
+            return 3
         return 0
     try:
         if a.cmd == "repage":
