@@ -70,3 +70,25 @@ sebesar mungkin dan tidak lebih dari 1. Baris tidak pernah terbelah; `keep` menj
 (mis. dari "Hormat kami" sampai "Founder & CEO") tetap utuh. Tiap baris disalin dari salinan
 halaman yang sudah diredaksi, jadi tidak ada teks tersembunyi yang ikut. `footer` menulis nomor
 halaman di tengah bawah. Urutan lengkap surat: `repage` → `letterhead` → `sign`.
+
+## jdpage — one-page "How I would build your system" PDF
+
+`deckkit jdpage data.json out.pdf` fills `tools/deckkit/templates/jdpage.html` and prints it to
+one A4 page with headless Chrome (`chrome.print_pdf`). Exit 0 prints the PDF path. Bad data exits 2
+and names the field (`field: reason`); nothing is written. The template has no slot for contact
+info, links or handles, and any string field that looks like a URL, domain, email or `@handle`
+is rejected with `field: no links on the JD page`. Every string is HTML-escaped.
+
+```json
+{"title": "the JD problem restated (max 90 chars)",
+ "problem": "max 280 chars",
+ "flow": ["3 to 6 steps, max 90 chars each"],
+ "phases": [{"name": "max 40", "deliverable": "max 140", "days": 3}],
+ "risks": [{"risk": "max 120", "mitigation": "max 160"}],
+ "proof": [{"label": "max 40", "number": "max 20", "source": "max 60"}],
+ "cta": "max 160 chars",
+ "brand": {"name": "max 60", "color": "#RRGGBB", "logo_path": "optional file"}}
+```
+
+Exactly 3 phases (`days` is a number or a short string), 2 to 4 risks, 1 to 3 proof items.
+`proof.number` must come from the seller's own verified claims: the tool cannot check that.
