@@ -7,7 +7,7 @@
 Ini yang membedakan penawaran yang dipercaya dari vendor yang ketahuan. **Sekali satu
 angka jatuh, seluruh angka lain ikut jatuh.**
 
-## Tiga belas pagar kejujuran
+## Empat belas pagar kejujuran
 
 1. **Nol janji penghematan, ROI, atau balik modal.** Kata yang dipakai **"paparan"**,
    bukan "penghematan". Boleh menggambarkan ongkos cara kerja prospek hari ini dari
@@ -82,6 +82,14 @@ angka jatuh, seluruh angka lain ikut jatuh.**
     ingin menyebut namanya karena di situ letak seluruh argumennya, dan itu sah selama
     yang disebut tentangnya adalah fakta teknis yang bisa diperiksa, bukan tuduhan.
     Jawabannya diambil di `b2b-brand-intake.md` dan dicatat di `brand.md`.
+14. **Tidak ada kalimat yang merendahkan kemampuan penjual — di slide mana pun.**
+    Aturan penjual (2026-11-11). *"Kami belum pernah mengerjakan X"*, *"kami baru di
+    bidang ini"*, *"pengalaman kami terbatas"*, *"daripada menebak, kami minta…"* —
+    semua dilarang. Kekurangan dibahas di rapat atau interview, tidak ditulis di deck.
+    Bentuk yang benar: hilangkan, atau tulis sebagai langkah kerja (*"kami mulai dari
+    aturan dan disclaimer yang sudah Anda setujui"*). Pagar ini **tidak** mengizinkan
+    klaim yang tidak punya bukti (pagar #12 tetap berlaku), dan label kematangan
+    pagar #12 tetap dipakai — itu penanda netral, bukan pengakuan.
 
 ## Batas pengungkapan pelanggan referensi
 

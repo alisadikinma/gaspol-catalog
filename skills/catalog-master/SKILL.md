@@ -152,3 +152,8 @@ catalog/
    in a day; naming the model turns intellectual property into a shopping list.
 5. Nothing in `references/` is edited to fit a product. Product facts are runtime
    input; the references are the generic canon.
+6. No sentence anywhere in the material talks down the seller's ability
+   (merendahkan kemampuan penjual): no "we have not done X before", "we are new to", "limited
+   experience", "belum berpengalaman". A gap is for the meeting or interview, not the
+   page. Leave it out, or write it as a working step. The maturity label of rail 12
+   stays; it is a neutral tag, not an admission. `b2b-honesty-rails.md` rail 14.

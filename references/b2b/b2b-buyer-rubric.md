@@ -112,13 +112,16 @@ line: it spreads to the findings, which are the offer's actual strength `[S16]`.
 ## 7. Anti-pattern sweep
 
 Run `## Anti-pola` from `research/buyer-brain.md` against the deck. Any hit is
-logged. These three are **BLOCKING on their own**:
+logged. These four are **BLOCKING on their own**:
 
 - a promise of savings, ROI, or payback
 - a big number stated before the assumption it rests on
 - an operational identity of a reference customer disclosed without a contract
   permitting it (fleet counts, plates, driver names, delivery records, customer
   identities)
+- a sentence that talks down the seller's ability (merendahkan kemampuan penjual):
+  "we have not done X before", "we are new to", "limited experience", "rather than
+  guessing" — `b2b-honesty-rails.md` rail 14. The rail-12 maturity tag is not a hit.
 
 ## Output contract (what `catalog-gate` emits from this file)
 

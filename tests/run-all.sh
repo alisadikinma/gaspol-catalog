@@ -4,7 +4,7 @@ set -uo pipefail
 cd "$(dirname "$0")" || exit 1
 rc=0
 for t in deps-present.sh research-contract.sh guard-generic.sh \
-         frontmatter.sh refs-present.sh fixture-shape.sh; do
+         frontmatter.sh refs-present.sh fixture-shape.sh self-doubt-rule.sh; do
   [ -f "$t" ] || { echo "SKIP $t (belum ada)"; continue; }
   echo "=== $t"
   bash "$t" || rc=1

@@ -148,3 +148,6 @@ prospects/<slug>/
 5. Never state a prospect's operating figure that was not in a document they produced.
    Estimating one and rendering it as fact is the single fastest way to lose a deal in
    the room, because they know their own numbers and we do not.
+6. No sentence in the deck talks down the seller's ability (merendahkan kemampuan
+   penjual). A gap is for the meeting, not the slide: leave it out or write it as a
+   working step. `b2b-honesty-rails.md` rail 14.
