@@ -103,5 +103,8 @@ marks swappable text with `data-job="<slot>"`; `data-job-max="<n>"` caps visible
 `cta-sub`. SLOTS.json is `{"<slot>": "plain text, *word* = <em>"}`. Everything outside the slots
 stays byte-identical. Refused (exit 2, message starts with the slot name): unknown slot, slot not
 in the deck, over the max, `<` or `>` in the text, a slot nested in another slot. Chrome failure
-exits 3. Temporary pages (`_jobdeck_<pid>_<n>.html`) live in the deck folder so relative images
-resolve, and are deleted afterwards. Library: `jobdeck.fill`, `jobdeck.slide_ids`, `jobdeck.render`.
+exits 3. Temporary pages (`_jobdeck_*.html`, `tempfile.mkstemp`) live in the deck folder so relative
+images resolve, and are deleted afterwards. One total deadline covers every slide: `--timeout SECONDS`
+(default 50, below a 60 s caller limit). The PDF is written atomically (temp file + `os.replace`). Slides
+are isolated with `.slide:not([id="<id>"])`, so any id works except one containing `"` or `\`. Slot
+elements must be normal flow elements (not `<title>`, `<script>`, `<textarea>`). Library: `jobdeck.fill`, `jobdeck.slide_ids`, `jobdeck.render`.

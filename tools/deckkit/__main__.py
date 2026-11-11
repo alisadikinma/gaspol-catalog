@@ -222,6 +222,7 @@ def main(argv=None):
     s.add_argument("deck", help="deck HTML with data-job slots and div.slide[id] slides")
     s.add_argument("slots", help='JSON {"<slot>": "text, *word* = emphasis"}')
     s.add_argument("out", help="output PDF")
+    s.add_argument("--timeout", type=float, default=50, help="seconds for the whole render (default 50)")
 
     s = sub.add_parser("prompts", help="slide spec -> prompt files + manifest")
     s.add_argument("spec")
@@ -291,14 +292,20 @@ def main(argv=None):
                 raise ValueError("slots: must be a JSON object")
             if not os.path.isfile(a.deck):
                 raise ValueError(f"deck: file not found: {a.deck}")
-            print(jobdeck.render(a.deck, slots, a.out))
-        except (OSError, json.JSONDecodeError) as exc:
+            with open(a.deck, encoding="utf-8") as fh:
+                jobdeck.fill(fh.read(), slots)
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
             print(f"input: {exc}", file=sys.stderr)
             return 2
         except ValueError as exc:
             print(str(exc), file=sys.stderr)
             return 2
-        except RuntimeError as exc:
+        try:
+            print(jobdeck.render(a.deck, slots, a.out, timeout=a.timeout))
+        except ValueError as exc:      # e.g. a deck with no slides
+            print(str(exc), file=sys.stderr)
+            return 2
+        except Exception as exc:       # Chrome, PIL, disk: anything the render itself raised
             print(f"FAIL: {exc}", file=sys.stderr)
             return 3
         return 0

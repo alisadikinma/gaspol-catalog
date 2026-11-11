@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -180,18 +181,23 @@ def _runner(chrome):
 
 
 def _hide_others(page, sid):
-    rule = f".slide:not(#{sid}){{display:none !important}}"
+    # attribute selector: an id like "1st" or "a.b" is not a valid #id selector
+    if '"' in sid or "\\" in sid:
+        raise ValueError(f"{sid}: slide id must not contain a quote or backslash")
+    rule = f'.slide:not([id="{sid}"]){{display:none !important}}'
     i = page.rfind("</style>")
     if i < 0:
         raise ValueError("deck: no </style> to hold the slide rule")
     return page[:i] + rule + page[i:]
 
 
-def render(deck_path, slots, out_pdf, chrome=None, timeout=60):
+def render(deck_path, slots, out_pdf, chrome=None, timeout=50):
     """Fill ``slots`` into the deck and write one PDF page per slide. Returns ``out_pdf``.
 
+    ``timeout`` is ONE deadline for the whole render: each Chrome run gets the time left.
     Temporary pages are written inside the deck folder (relative images must resolve) and are
-    always deleted. ``chrome``: see ``_runner``.
+    always deleted. The PDF is written to a temp file and moved into place. ``chrome``: see
+    ``_runner``.
     """
     deck = Path(deck_path)
     if not deck.is_file():
@@ -202,19 +208,26 @@ def render(deck_path, slots, out_pdf, chrome=None, timeout=60):
         raise ValueError("deck: no div.slide[id] found")
     pages = [_hide_others(filled, sid) for sid in ids]
     run = _runner(chrome)
+    deadline = time.monotonic() + timeout
     folder = deck.resolve().parent
     temp = []
+    tmp_pdf = None
     try:
         with tempfile.TemporaryDirectory() as shots:
             images = []
             for n, page in enumerate(pages, 1):
-                src = folder / f"_jobdeck_{os.getpid()}_{n}.html"
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    raise RuntimeError(f"render ran out of time ({timeout}s) before slide {ids[n - 1]}")
+                fd, name = tempfile.mkstemp(dir=folder, prefix="_jobdeck_", suffix=".html")
+                src = Path(name)
                 temp.append(src)
-                src.write_text(page, encoding="utf-8")
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    fh.write(page)
                 png = Path(shots) / f"{n}.png"
                 run(["--headless=new", "--disable-gpu", "--hide-scrollbars",
                      f"--window-size={SIZE[0]},{SIZE[1]}", "--virtual-time-budget=8000",
-                     f"--screenshot={png}", src.as_uri()], timeout)
+                     f"--screenshot={png}", src.as_uri()], left)
                 if not png.is_file():
                     raise RuntimeError(f"Chrome wrote no screenshot for slide {ids[n - 1]}")
                 with Image.open(png) as im:
@@ -225,9 +238,14 @@ def render(deck_path, slots, out_pdf, chrome=None, timeout=60):
                     images.append(im.convert("RGB").crop((0, 0, *SIZE)))
             out = Path(out_pdf)
             out.parent.mkdir(parents=True, exist_ok=True)
-            images[0].save(out, "PDF", save_all=True, append_images=images[1:], resolution=96.0)
+            fd, name = tempfile.mkstemp(dir=out.parent, prefix=".jobdeck_", suffix=".pdf.tmp")
+            os.close(fd)
+            tmp_pdf = Path(name)
+            images[0].save(tmp_pdf, "PDF", save_all=True, append_images=images[1:], resolution=96.0)
+            os.replace(tmp_pdf, out)
+            tmp_pdf = None
     finally:
-        for p in temp:
+        for p in temp + ([tmp_pdf] if tmp_pdf else []):
             try:
                 p.unlink()
             except FileNotFoundError:

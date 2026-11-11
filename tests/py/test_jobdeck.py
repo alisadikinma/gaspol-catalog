@@ -162,15 +162,15 @@ class RenderTest(unittest.TestCase):
             seen.append(text)
             self.assertIn("New head", text)
             self.assertIn("display:none !important}", text)
-            self.assertEqual(timeout, 60)
+            self.assertLessEqual(timeout, 50)
             for flag in ("--headless=new", "--disable-gpu", "--hide-scrollbars",
                          "--window-size=1920,1080", "--virtual-time-budget=8000"):
                 self.assertIn(flag, argv)
             png_runner()(argv, timeout)
 
         jobdeck.render(self.deck, {"cover-head": "New head"}, self.out, chrome=run)
-        self.assertIn(".slide:not(#s1){display:none !important}", seen[0])
-        self.assertIn(".slide:not(#s2){display:none !important}", seen[1])
+        self.assertIn('.slide:not([id="s1"]){display:none !important}', seen[0])
+        self.assertIn('.slide:not([id="s2"]){display:none !important}', seen[1])
         # appended inside the last style block, before </style>
         self.assertLess(seen[0].index("display:none !important"), seen[0].index("</style>"))
 
@@ -215,6 +215,92 @@ class RenderTest(unittest.TestCase):
         bare.write_text("<style></style><p>x</p>", encoding="utf-8")
         with self.assertRaises(ValueError):
             jobdeck.render(bare, {}, self.out, chrome=png_runner())
+
+    def _deck_with_ids(self, *ids):
+        body = "".join(f"<div id='{i}' class='slide'>{i}</div>" for i in ids)
+        d = self.deck_dir / "ids.html"
+        d.write_text(f"<style>.slide{{width:1px}}</style>{body}", encoding="utf-8")
+        return d
+
+    def test_slide_ids_digit_leading_and_dot_use_attribute_selector(self):
+        seen = []
+
+        def run(argv, timeout):
+            seen.append(Path(argv[-1].removeprefix("file://")).read_text(encoding="utf-8"))
+            png_runner()(argv, timeout)
+
+        jobdeck.render(self._deck_with_ids("1st", "a.b"), {}, self.out, chrome=run)
+        self.assertIn('.slide:not([id="1st"]){display:none !important}', seen[0])
+        self.assertIn('.slide:not([id="a.b"]){display:none !important}', seen[1])
+        self.assertNotIn(":not(#", seen[0])
+
+    def test_slide_id_with_quote_or_backslash_refused(self):
+        for bad in ('a"b', "a\\b"):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                jobdeck.render(self._deck_with_ids(bad),
+                               {}, self.out, chrome=png_runner())
+        self.assertEqual(self.leftovers(), [])
+
+    def test_total_deadline_shared_across_slides(self):
+        import time
+        from unittest import mock
+        times = []
+        clock = [1000.0]
+
+        def run(argv, timeout):
+            times.append(timeout)
+            clock[0] += 20
+            png_runner()(argv, timeout)
+
+        with mock.patch.object(jobdeck.time, "monotonic", lambda: clock[0]):
+            jobdeck.render(self.deck, {}, self.out, chrome=run, timeout=50)
+        self.assertEqual(times, [50, 30])
+
+    def test_deadline_exhausted_raises_and_cleans(self):
+        from unittest import mock
+        clock = [0.0]
+
+        def run(argv, timeout):
+            clock[0] += 100
+            png_runner()(argv, timeout)
+
+        with mock.patch.object(jobdeck.time, "monotonic", lambda: clock[0]):
+            with self.assertRaisesRegex(RuntimeError, "time"):
+                jobdeck.render(self.deck, {}, self.out, chrome=run, timeout=50)
+        self.assertEqual(self.leftovers(), [])
+        self.assertFalse(self.out.exists())
+
+    def test_default_timeout_is_50(self):
+        import inspect
+        self.assertEqual(inspect.signature(jobdeck.render).parameters["timeout"].default, 50)
+
+    def test_two_renders_do_not_share_page_names(self):
+        names = []
+
+        def run(argv, timeout):
+            names.append(Path(argv[-1].removeprefix("file://")).name)
+            png_runner()(argv, timeout)
+
+        jobdeck.render(self.deck, {}, self.out, chrome=run)
+        jobdeck.render(self.deck, {}, self.out, chrome=run)
+        self.assertEqual(len(set(names)), 4)
+        self.assertTrue(all(n.startswith("_jobdeck_") and n.endswith(".html") for n in names))
+
+    def test_other_renders_pages_survive(self):
+        other = self.deck_dir / "_jobdeck_other.html"
+        other.write_text("x")
+        jobdeck.render(self.deck, {}, self.out, chrome=png_runner())
+        self.assertTrue(other.exists())
+
+    def test_pdf_written_atomically(self):
+        self.out.parent.mkdir(parents=True)
+        self.out.write_bytes(b"OLD")
+        with self.assertRaises(RuntimeError):
+            jobdeck.render(self.deck, {}, self.out, chrome=png_runner(calls=[], fail_on=2))
+        self.assertEqual(self.out.read_bytes(), b"OLD")
+        jobdeck.render(self.deck, {}, self.out, chrome=png_runner())
+        self.assertTrue(self.out.read_bytes().startswith(b"%PDF"))
+        self.assertEqual([p.name for p in self.out.parent.iterdir()], ["job.pdf"])
 
     @unittest.skipUnless(_real_chrome(), "Chrome not installed")
     def test_real_chrome(self):
@@ -281,6 +367,39 @@ class CliTest(unittest.TestCase):
         rc, _, err = self.run_cli(self.deck, self.slots({}), self.out)
         self.assertEqual(rc, 3)
         self.assertIn("chrome not found", err)
+
+    def test_render_oserror_exit_3(self):
+        for exc in (FileNotFoundError("chrome"), PermissionError("ro"),
+                    Image.UnidentifiedImageError("bad png"), OSError("disk full")):
+            with self.subTest(exc=type(exc).__name__):
+                orig = jobdeck.render
+
+                def boom(*a, _e=exc, **k):
+                    raise _e
+                jobdeck.render = boom
+                try:
+                    rc, _, err = self.run_cli(self.deck, self.slots({}), self.out)
+                finally:
+                    jobdeck.render = orig
+                self.assertEqual(rc, 3)
+                self.assertIn("FAIL", err)
+
+    def test_render_valueerror_still_exit_2(self):
+        rc, _, _ = self.run_cli(self.deck, self.slots({"cover-head": "a<b"}), self.out)
+        self.assertEqual(rc, 2)
+
+    def test_timeout_option_passed(self):
+        got = {}
+        orig = jobdeck.render
+
+        def fake(deck, slots, out, **k):
+            got.update(k)
+            return out
+        jobdeck.render = fake
+        self.addCleanup(setattr, jobdeck, "render", orig)
+        rc, _, _ = self.run_cli(self.deck, self.slots({}), self.out, "--timeout", "12")
+        self.assertEqual(rc, 0)
+        self.assertEqual(got["timeout"], 12)
 
     def test_ok_exit_0_prints_path(self):
         orig = jobdeck.render
