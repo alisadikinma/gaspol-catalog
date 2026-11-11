@@ -22,7 +22,23 @@ def _add_fade(slide):
         clr.addnext(tr)
 
 
-def build_pptx(images, out, width_in=13.333, height_in=7.5, transition=None, jpeg_quality=None):
+def _page_aspect(images):
+    """width/height shared by every image; ValueError when they differ (one slide size per deck)."""
+    from PIL import Image
+    aspects = []
+    for p in images:
+        with Image.open(p) as im:
+            aspects.append(im.width / im.height)
+    if max(aspects) - min(aspects) > 0.005:
+        raise ValueError("fit_image needs pages of one aspect ratio, got "
+                         + ", ".join(f"{a:.3f}" for a in sorted(set(round(a, 3) for a in aspects))))
+    return aspects[0]
+
+
+def build_pptx(images, out, width_in=13.333, height_in=7.5, transition=None, jpeg_quality=None,
+               fit_image=False):
+    """``fit_image`` keeps ``width_in`` and sets the slide height from the pages' own aspect ratio,
+    for pages that are not 16:9 (e.g. a footer band added below the slide)."""
     try:
         from pptx import Presentation
         from pptx.util import Inches
@@ -33,6 +49,8 @@ def build_pptx(images, out, width_in=13.333, height_in=7.5, transition=None, jpe
     for p in images:
         if not Path(p).exists():
             raise FileNotFoundError(p)
+    if fit_image:
+        height_in = width_in / _page_aspect(images)
     prs = Presentation()
     prs.slide_width, prs.slide_height = Inches(width_in), Inches(height_in)
     blank = prs.slide_layouts[6]

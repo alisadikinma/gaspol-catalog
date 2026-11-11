@@ -22,10 +22,18 @@ def list_pages(src, pattern=r"\d{2}\.png|slide-\d+\.png", skip=()):
 
 def build_pdf(pages, out, page_size=None, dpi=150, mark_opts=None, marked_dir=None, font_path=None):
     """``pages`` = image paths in order. ``mark_opts`` (dict for :func:`watermark.mark`) turns the
-    watermark on; ``marked_dir`` keeps the marked PNGs for inspection. Returns the page count."""
+    watermark on; ``marked_dir`` keeps the marked PNGs for inspection. ``page_size`` None means the
+    first page's size, so a deck of mixed render sizes still gets one page size; a page of another
+    aspect ratio is refused (ValueError) rather than stretched. Returns the page count."""
     images = []
+    auto = page_size is None
     for p in pages:
         im = Image.open(p).convert("RGB")
+        if page_size is None:
+            page_size = im.size
+        elif auto and abs(im.width / im.height - page_size[0] / page_size[1]) > 0.01:
+            raise ValueError(f"{os.path.basename(str(p))}: aspect {im.width}x{im.height} differs from the "
+                             f"first page {page_size[0]}x{page_size[1]}; pass --page-size or fix the pages")
         if page_size and im.size != tuple(page_size):
             im = im.resize(tuple(page_size), Image.LANCZOS)
         if mark_opts is not None:

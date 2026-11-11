@@ -12,11 +12,12 @@ The seller's name is never written here. The preset uses `{seller}`, `{language}
   "name": "isometrik-terang",
   "intro": "A finished 16:9 presentation slide in {language} for a B2B offer from {seller} to {audience}.",
   "style": "STYLE: bright, clean corporate slide. Background light warm grey #f3f6f5 unless the layout says otherwise. Headlines deep navy #15212b; accent teal #23857f; second accent amber #a8712a; steel blue #2c5d99; issue slides use burnt orange #b8561a for eyebrow and bars; body grey #44545e. Illustration: clean isometric 3D, soft matte clay, soft shadows, same look as the style reference image. Headline in a bold condensed sans-serif; body in a clean sans-serif; crisp, left-aligned, high contrast, readable on a phone. Use the first reference image ONLY for the exact {seller} wordmark. Use the second reference image ONLY as the style source, do not copy its objects.",
-  "guard": "RULES: The words before each colon are layout instructions and are never printed; only the strings between straight double quotes print. Each quoted string prints exactly once, spelled exactly, every digit exact. No other words, numbers or labels anywhere. No English words unless quoted. No people, no faces, no hands. No chart axes with numbers. Documents, receipts, papers, signs and boxes are blank: plain lines or plain shapes only, never letters. The only other lettering allowed is the {seller} wordmark on app screens{ai}. No other logos or brand names. Do not add decorative blocks or shapes that are not described. Keep every line of text in its own clear space; illustrations never overlap text. Every object is sharp, solid and fully drawn: no blurred, ghosted, smeared or half-transparent objects, and nothing copied from the style reference image. Every magenta area is exactly as described: one flat, solid, bright magenta #ff00ff shape with sharp edges, no outline, no shading, no text, no letters and no icon inside; magenta is used nowhere else on the canvas, and no magenta area is added that is not described. Leave the bottom 3% of the canvas empty. Nothing clipped.",
+  "guard": "RULES: The words before each colon are layout instructions and are never printed; only the strings between straight double quotes print. Each quoted string prints exactly once, spelled exactly, every digit exact. No other words, numbers or labels anywhere. No words in any language other than {language} unless quoted. No people, no faces, no hands. No chart axes with numbers. Documents, receipts, papers, signs and boxes are blank: plain lines or plain shapes only, never letters. The only other lettering allowed is the {seller} wordmark on app screens{ai}. No other logos or brand names. Do not add decorative blocks or shapes that are not described. Keep every line of text in its own clear space; illustrations never overlap text. Every object is sharp, solid and fully drawn: no blurred, ghosted, smeared or half-transparent objects, and nothing copied from the style reference image. Every magenta area is exactly as described: one flat, solid, bright magenta #ff00ff shape with sharp edges, no outline, no shading, no text, no letters and no icon inside; magenta is used nowhere else on the canvas, and no magenta area is added that is not described. Leave the bottom 3% of the canvas empty. Nothing clipped.",
   "ai_clause": " and the two letters AI on the AI chip or on a brooch badge",
   "people_clause_from": "No people, no faces, no hands. ",
   "people_clause_to": "No people other than the figures described. ",
   "text_header": "TEXT (print exactly these, verbatim, each once):",
+  "text_budget": {"head_words": 18, "line_words": 16},
   "roles": {
     "eye": "eyebrow, small caps teal",
     "eye_problem": "eyebrow, small caps burnt orange",
@@ -56,6 +57,9 @@ The seller's name is never written here. The preset uses `{seller}`, `{language}
 - Objects are sharp, solid and fully drawn. No blur, no ghosting, no half-transparent shapes.
 - No people, faces or hands unless a slide says so (`people: true`).
 - Documents, signs and boxes stay blank. Any real lettering is added in post.
+- Draw what the buyer sees, not the infrastructure behind it: people, the unit, a phone,
+  the owner's screen. No servers, cell towers, antennas, clouds or signal beams on a
+  how-it-works slide; a lay buyer cannot read them (rejected 2026-10-31).
 
 ## Type
 
@@ -66,10 +70,22 @@ The seller's name is never written here. The preset uses `{seller}`, `{language}
 ## Layout grammar
 
 - Eyebrow above headline. Teal on solution slides, burnt orange on problem slides.
-- Body: illustration on the left, 55 to 65 percent of the width (62 percent is typical).
-  Text column on the right, 35 to 45 percent, with 3 or 4 points. Each point is a bold
-  title plus a grey detail line, and each has a coloured left bar. The bar is burnt orange
-  on problem slides and matches the illustration's colour on solution slides.
+- Approved standard (2026-10-27): headline is one claim across the
+  full width, at most 18 words. Below it one structured block, never loose paragraphs:
+  three or four points (bold navy title + one grey detail line), white rounded tiles with
+  an icon, a four-step flow on small isometric platforms, a comparison table, or a desktop
+  monitor whose magenta screen gets a real app screenshot pasted in (`deckkit shot` +
+  `deckkit compose`). Illustration 50 to 60 percent of the width.
+- Text budget (`text_budget`, checked by `deckkit prompts`): headline at most 18 words,
+  any other line at most 16 words. A price or terms slide that must be dense sets
+  `dense` to the reason; the cap only stops a build when the spec sets `"strict_budget": true`,
+  otherwise it warns. Rejected 2026-10-31: a 22-word headline with
+  25-word paragraphs beside a few small objects. Also rejected: diorama
+  slides with one or two lines and no product shown; a product slide shows the app.
+- Product slides show the real app: one monitor or phone per slide with a screenshot of
+  an HTML mockup, plus three tiles naming what the buyer sees on it.
+- Portfolio: a seller deck carries the client proof slide and the founder slide.
+- The seller wordmark sits small in the top-right corner of content slides.
 - Cover: text on the left 40 percent, illustration on the right 60 percent, with a
   tricolour stripe (steel blue, teal, amber) along the top edge.
 - Proof slide: dark navy `#15212b` background, white and teal text.

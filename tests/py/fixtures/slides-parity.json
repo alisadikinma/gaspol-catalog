@@ -20,6 +20,7 @@
       ],
       "refs": [],
       "ai": false,
+      "dense": "parity fixture from a deck written before text_budget (2026-10-31); this test checks block format only",
       "people": false,
       "extra": ""
     }

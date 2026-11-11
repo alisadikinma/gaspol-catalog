@@ -7,6 +7,17 @@ import sys
 from PIL import Image
 
 
+def _alpha(pct):
+    """Watermark opacity in percent (1-100) -> 0-255 alpha."""
+    try:
+        p = float(pct)
+    except ValueError:
+        raise ValueError(f"--opacity needs a percent 1-100, got {pct!r}") from None
+    if not 1 <= p <= 100:
+        raise ValueError(f"--opacity needs a percent 1-100, got {pct!r}")
+    return round(p * 255 / 100)
+
+
 def _grid(spec):
     try:
         c, r = (int(v) for v in spec.lower().split("x"))
@@ -65,14 +76,26 @@ def main(argv=None):
     s.add_argument("--watermark-logo", help="logo image tiled diagonally as the watermark (enables it; not reversible)")
     s.add_argument("--grid", help="CxR: put the watermark text at the centre of each grid cell, e.g. 3x4")
     s.add_argument("--page-size", help="WxH every page is scaled to, e.g. 2752x1536")
+    s.add_argument("--opacity", help="watermark tile opacity in percent, 1-100 (default 10 for text, 12 for a logo)")
     s.add_argument("--skip", nargs="*", default=[], help="page filenames to leave out")
     s.add_argument("--pattern", default=r"\d{2}\.png|slide-\d+\.png")
+
+    s = sub.add_parser("sign", help="signature / company stamp onto a PDF letter, anchored to text")
+    s.add_argument("plan", help='JSON: {"src","dst","items":[{"image","anchor","dx","dy","width","opacity"}]}')
+
+    s = sub.add_parser("repage", help="re-pack a PDF letter onto N pages line by line, with page numbers")
+    s.add_argument("plan", help='JSON: {"src","dst","pages","first_top","top","bottom","keep":[[first,last]],"footer"}')
+
+    s = sub.add_parser("letterhead", help="kop surat onto a PDF letter; moves page content down to clear it")
+    s.add_argument("plan", help='JSON: {"src","dst","pages","logo","logo_height","lines":[{"text","size","bold","colour"}],"rules"}')
 
     s = sub.add_parser("pptx", help="images -> 16:9 pptx")
     s.add_argument("out")
     s.add_argument("images", nargs="+")
     s.add_argument("--transition", choices=["fade"], help="slide transition (default none)")
     s.add_argument("--jpeg-quality", type=int, help="store pictures as JPEG at this quality, e.g. 92")
+    s.add_argument("--fit-image", action="store_true",
+                   help="slide height from the pages' aspect ratio instead of 16:9 (pages with a footer band)")
 
     s = sub.add_parser("stamp", help="stamp page numbers from filenames")
     s.add_argument("src")
@@ -82,8 +105,10 @@ def main(argv=None):
                    help="the human approved the renders (page numbers are stamped only after that)")
 
     s = sub.add_parser("band", help="add a footer band to each page")
-    s.add_argument("src_dir")
+    s.add_argument("src_dir", help="folder of pages, or a JSON map {\"01\": \"renders/01-r28.png\", ...} (paths relative to it)")
     s.add_argument("dst_dir")
+    s.add_argument("--prefix", default="", help="output name prefix for a map, e.g. slide- -> slide-01.png")
+    s.add_argument("--font", help="band font file (default: first system font found, a bold face)")
     s.add_argument("--text", required=True)
     s.add_argument("--logos", nargs="*", default=[], help="left-to-right logo files")
     s.add_argument("--url", help="small line under the logos, e.g. a web address")
@@ -93,6 +118,13 @@ def main(argv=None):
                    help="the human approved the renders; required with --numbers")
     s.add_argument("--number-fmt", default="{n} / {total}", help="number text, uses {n} and {total}")
     s.add_argument("--fit-canvas", help="WxH: letterbox each page to this size before banding")
+    s.add_argument("--url-colour", help="R,G,B of the url line, e.g. 35,133,127 (default: the band text grey)")
+    s.add_argument("--sub", help="second, smaller text line under --text (a short description)")
+    s.add_argument("--sub-colour", help="R,G,B of the --sub line (default: the band text grey)")
+    s.add_argument("--band-frac", type=float, default=0.055,
+                   help="band height as a share of the page width (default 0.055; Google Business Profile allows <= 0.10)")
+    s.add_argument("--secondary-frac", type=float, default=0.34,
+                   help="height of every logo after the first, as a share of the band (default 0.34; ~0.6 for an equal lockup)")
 
     s = sub.add_parser("review", help="deck.md -> HTML review page")
     s.add_argument("deck")
@@ -120,6 +152,16 @@ def main(argv=None):
     s.add_argument("logos", nargs="+")
     s.add_argument("--key", choices=["white", "magenta"], default="white", help="slot colour (default white)")
     s.add_argument("--mode", choices=["flat", "quad", "pixel"], default="flat", help="flat paste; quad = perspective warp onto a tilted slot; pixel = quad, but objects drawn in front of a magenta slot stay in front (needs --key magenta)")
+    s.add_argument("--min-area", type=float, default=0.01, help="smallest slot as a share of the page (default 0.01; card-header logo slots need ~0.002)")
+    s.add_argument("--pad", type=int, default=0, help="flat + magenta: also paint N px around the slot with the sampled ground colour (covers a soft pink glow, try 12)")
+    s.add_argument("--fit", type=float, nargs=2, metavar=("W", "H"), default=(0.78, 0.7), help="largest logo size as a share of the slot width and height (default 0.78 0.7; 0.95 0.95 for bigger logos)")
+
+    s = sub.add_parser("logo-quads", help="spec JSON -> paste a logo onto hand-measured panels (no slot in the render)")
+    s.add_argument("spec")
+
+    s = sub.add_parser("compose", help="plan JSON -> logos, photos, badges, flags pasted into magenta slots")
+    s.add_argument("plans", nargs="+", help="plan files: one page, or {\"pages\": [...]}")
+    s.add_argument("--only", nargs="*", help="run only pages whose dst contains one of these strings")
 
     s = sub.add_parser("photo", help="cover-crop a real photo into a box or circle")
     s.add_argument("image")
@@ -129,6 +171,23 @@ def main(argv=None):
     s.add_argument("--circle", action="store_true", help="circular mask instead of a rounded box")
     s.add_argument("--out", help="output path (default: overwrite IMAGE)")
 
+    s = sub.add_parser("lockup", help="two logos -> one transparent 'A x B' lockup PNG (trimmed, equal height)")
+    s.add_argument("out", help="output PNG")
+    s.add_argument("logos", nargs=2, metavar="LOGO", help="first (full height) and second logo")
+    s.add_argument("--height", type=int, default=300, help="lockup height in px")
+    s.add_argument("--sep", default="\u00d7", help="mark between the logos")
+    s.add_argument("--gap", type=int, help="px each side of the mark (default 0.233*height)")
+    s.add_argument("--second-scale", type=float, default=0.78, help="second logo height / first")
+    s.add_argument("--font", help=".ttf for the mark (default: system font search)")
+    s.add_argument("--trim-out", metavar="DIR", help="also save each trimmed, scaled logo here (for band --logos)")
+
+    s = sub.add_parser("logo-square", help="logo centred on a square canvas, inside the circle a profile crops to")
+    s.add_argument("logo")
+    s.add_argument("out", help="output PNG or JPG")
+    s.add_argument("--size", type=int, default=720, help="square side in px (Google Business Profile: 720)")
+    s.add_argument("--safe", type=float, default=0.8, help="logo box diagonal as a share of the side (default 0.8)")
+    s.add_argument("--bg", default="255,255,255", help="R,G,B background (default white)")
+
     s = sub.add_parser("recolour", help="recolour the accent bars beside text points, top to bottom")
     s.add_argument("image")
     s.add_argument("--colours", nargs="+", required=True, help="hex colours, top bar first")
@@ -136,9 +195,17 @@ def main(argv=None):
     s.add_argument("--source", default="#23857f", help="current bar colour")
     s.add_argument("--out", help="output path (default: overwrite IMAGE)")
 
-    s = sub.add_parser("table", help="spec JSON -> drawn comparison table page (exact numbers)")
+    s = sub.add_parser("retype", help="spec JSON -> retype text paragraphs in rendered pages")
     s.add_argument("spec")
+
+    s = sub.add_parser("reflow", help="spec JSON -> move or remove words of rendered text (reuses the real ink)")
+    s.add_argument("spec")
+
+    s = sub.add_parser("table", help="spec JSON -> drawn comparison table page (exact numbers)")
+    s.add_argument("spec", help="spec JSON; with --from-md, a JSON of extra keys (highlight, mark_rule, widths) or '-'")
     s.add_argument("out")
+    s.add_argument("--from-md", help="deck.md to read the section from (Kicker, Headline, Sub, table, notes, Pita)")
+    s.add_argument("--section", help="section number in deck.md, e.g. 25")
     s.add_argument("--size", default="2752x1536", help="WxH of the page (default 2752x1536)")
     s.add_argument("--font", help="font file (.ttf/.ttc); default: first system font found")
 
@@ -163,6 +230,8 @@ def main(argv=None):
     s.add_argument("--mode", help="generator mode (default: house image_mode)")
     s.add_argument("--workers", type=int, default=4)
     s.add_argument("--tries", type=int, default=3)
+    s.add_argument("--no-webhook", action="store_true",
+                   help="poll the History API even when the webhook receiver runs")
     s.add_argument("--out", help="output dir (default: <project>/renders)")
     s.add_argument("--raw", help="raw generator dir (default: <project>/.tmp/mentah)")
     s.add_argument("--resolution", default="2K")
@@ -174,6 +243,21 @@ def main(argv=None):
 
     a = ap.parse_args(argv)
     try:
+        if a.cmd == "repage":
+            from . import repage
+            r = repage.repage(a.plan)
+            print(f"{r['rows']} rows -> {r['pages']} pages at scale {r['scale']}")
+            return 0
+        if a.cmd == "letterhead":
+            from . import letterhead
+            for pg, hb, dy, sc in letterhead.letterhead(a.plan):
+                print(f"page {pg}: header ends {hb}pt, content moved {dy}pt, scale {sc}")
+            return 0
+        if a.cmd == "sign":
+            from . import sign
+            for pg, rect in sign.sign(a.plan):
+                print(f"page {pg}: {rect}")
+            return 0
         if a.cmd == "pdf":
             from . import pdf
             size = tuple(int(v) for v in a.page_size.split("x")) if a.page_size else None
@@ -189,10 +273,14 @@ def main(argv=None):
                     opts["logo"] = a.watermark_logo
                 if a.grid:
                     opts["grid"] = _grid(a.grid)
+            if a.opacity is not None:
+                if not (a.watermark or a.watermark_logo):
+                    raise ValueError("--opacity needs --watermark or --watermark-logo")
+                opts["logo_opacity" if a.watermark_logo else "opacity"] = _alpha(a.opacity)
             print(f"{pdf.build_pdf(pages, a.out, size, mark_opts=opts)} pages -> {a.out}")
         elif a.cmd == "pptx":
             from . import pptx
-            print(f"{pptx.build_pptx(a.images, a.out, transition=a.transition, jpeg_quality=a.jpeg_quality)} slides -> {a.out}")
+            print(f"{pptx.build_pptx(a.images, a.out, transition=a.transition, jpeg_quality=a.jpeg_quality, fit_image=a.fit_image)} slides -> {a.out}")
         elif a.cmd == "stamp":
             from . import stamp
             _need_approved(a)
@@ -203,7 +291,22 @@ def main(argv=None):
                 _need_approved(a)
             logos = [Image.open(p) for p in a.logos]
             os.makedirs(a.dst_dir, exist_ok=True)
-            names = sorted(f for f in os.listdir(a.src_dir) if f.lower().endswith(".png"))
+            if os.path.isfile(a.src_dir) and a.src_dir.lower().endswith(".json"):
+                import json
+                with open(a.src_dir, encoding="utf-8") as fh:
+                    mapping = json.load(fh)
+                base = os.path.dirname(os.path.abspath(a.src_dir))
+                # the map's own folder may be a tools/ dir: try it, then its parent
+                def _src(p):
+                    for root in (base, os.path.dirname(base)):
+                        q = p if os.path.isabs(p) else os.path.join(root, p)
+                        if os.path.exists(q):
+                            return q
+                    raise FileNotFoundError(f"map entry not found: {p}")
+                srcs = {f"{a.prefix}{k}.png": _src(v) for k, v in mapping.items()}
+            else:
+                srcs = {f: os.path.join(a.src_dir, f) for f in os.listdir(a.src_dir) if f.lower().endswith(".png")}
+            names = sorted(srcs)
             fit = None
             if a.fit_canvas:
                 try:
@@ -223,10 +326,14 @@ def main(argv=None):
                     pages[num] = n
             for n in names:
                 digits = re.search(r"\d+", n) if a.numbers else None
-                band.add_band(Image.open(os.path.join(a.src_dir, n)), a.text, logos, url=a.url,
+                band.add_band(Image.open(srcs[n]), a.text, logos, url=a.url,
                               number=int(digits.group(0)) if digits else None,
                               total=len(names) if a.numbers else None,
-                              number_fmt=a.number_fmt, fit_canvas=fit).save(os.path.join(a.dst_dir, n))
+                              number_fmt=a.number_fmt, fit_canvas=fit, font_path=a.font,
+                              url_colour=tuple(int(v) for v in a.url_colour.split(",")) if a.url_colour else None,
+                              sub=a.sub, band_frac=a.band_frac, secondary_frac=a.secondary_frac,
+                              sub_colour=tuple(int(v) for v in a.sub_colour.split(",")) if a.sub_colour else None
+                              ).save(os.path.join(a.dst_dir, n))
             print(f"{len(names)} pages banded")
         elif a.cmd == "unmark":
             from . import watermark
@@ -254,9 +361,30 @@ def main(argv=None):
             return 1 if r is None else 0
         elif a.cmd == "logo-slots":
             from . import slots
-            img, used = slots.fill_slots(Image.open(a.image), a.logos, key=a.key, mode=a.mode)
+            if not all(0 < v <= 1 for v in a.fit):
+                raise ValueError(f"--fit values must be in (0, 1], got {a.fit[0]} {a.fit[1]}")
+            img, used = slots.fill_slots(Image.open(a.image), a.logos, min_area=a.min_area, key=a.key, mode=a.mode,
+                                         pad=a.pad, fit=tuple(a.fit))
             img.save(a.image)
             print(f"{len(used)} logos placed")
+        elif a.cmd == "logo-quads":
+            import json
+            from . import slots
+            with open(a.spec, encoding="utf-8") as fh:
+                spec = json.load(fh)
+            print(slots.paste_quads(spec, base_dir=os.path.dirname(os.path.abspath(a.spec))))
+        elif a.cmd == "compose":
+            import json
+            from . import compose
+            for pf in a.plans:
+                with open(pf, encoding="utf-8") as fh:
+                    spec = json.load(fh)
+                base = os.path.dirname(os.path.abspath(pf))
+                for page in spec.get("pages", [spec]):
+                    if a.only and not any(k in page["dst"] for k in a.only):
+                        continue
+                    dst, n, left = compose.run(page, base)
+                    print(f"{os.path.basename(dst)}: {n} slot(s), leftover magenta {left}")
         elif a.cmd == "photo":
             from . import photo
             try:
@@ -271,6 +399,24 @@ def main(argv=None):
             out = a.out or a.image
             res.save(out)
             print(out)
+        elif a.cmd == "logo-square":
+            from . import lockup
+            lockup.square(a.logo, size=a.size, safe=a.safe, bg=tuple(int(v) for v in a.bg.split(","))).save(a.out)
+            print(a.out)
+        elif a.cmd == "lockup":
+            from . import lockup
+            parts = []
+            res = lockup.lockup(a.logos, height=a.height, sep=a.sep, gap=a.gap,
+                                second_scale=a.second_scale, font=a.font, parts=parts)
+            res.save(a.out)
+            if a.trim_out:
+                os.makedirs(a.trim_out, exist_ok=True)
+                names = [os.path.splitext(os.path.basename(p))[0] + ".png" for p in a.logos]
+                if names[0] == names[1]:
+                    raise ValueError("the two logos share a file name; --trim-out would overwrite one")
+                for name, im in zip(names, parts):
+                    im.save(os.path.join(a.trim_out, name))
+            print(f"{a.out} {res.width}x{res.height}")
         elif a.cmd == "recolour":
             from . import recolour
             with Image.open(a.image) as page:
@@ -278,6 +424,23 @@ def main(argv=None):
             out = a.out or a.image
             res.save(out)
             print(out)
+        elif a.cmd == "retype":
+            import json
+            from . import patch
+            with open(a.spec, encoding="utf-8") as fh:
+                spec = json.load(fh)
+            for p in patch.retype(spec, base_dir=os.path.dirname(os.path.abspath(a.spec))):
+                print(p)
+        elif a.cmd == "reflow":
+            import json
+            from . import patch
+            with open(a.spec, encoding="utf-8") as fh:
+                spec = json.load(fh)
+            paths, words = patch.reflow(spec, base_dir=os.path.dirname(os.path.abspath(a.spec)))
+            for w in words:
+                print(json.dumps(w))
+            for p in paths:
+                print(p)
         elif a.cmd == "table":
             import json
             from . import table
@@ -286,8 +449,18 @@ def main(argv=None):
                 assert len(size) == 2
             except (ValueError, AssertionError):
                 raise ValueError(f"--size needs WxH like 2752x1536, got {a.size!r}") from None
-            with open(a.spec, encoding="utf-8") as fh:
-                spec = json.load(fh)
+            extra = {}
+            if a.spec != "-":
+                with open(a.spec, encoding="utf-8") as fh:
+                    extra = json.load(fh)
+            if a.from_md:
+                if not a.section:
+                    raise ValueError("--from-md needs --section")
+                with open(a.from_md, encoding="utf-8") as fh:
+                    spec = table.spec_from_md(fh.read(), a.section)
+                spec.update(extra)
+            else:
+                spec = extra
             table.render(spec, size=size, font_path=a.font).save(a.out)
             print(a.out)
         elif a.cmd == "shot":
@@ -345,9 +518,15 @@ def main(argv=None):
                        "PYTHONPATH": os.pathsep.join([root, *filter(None, [os.environ.get("PYTHONPATH")])])}
                 os.execve(py, [py, "-m", "tools.deckkit", *args], env)
                 return 1
-            res = gen.run(mp, generator, out_dir=a.out, raw_dir=a.raw, ver=a.ver, only=a.only or None,
-                          workers=a.workers, tries=a.tries, model=model,
-                          mode=a.mode or h.get("image_mode"), resolution=a.resolution)
+            notifier = None if a.no_webhook else gen.load_notifier(client)
+            try:
+                res = gen.run(mp, generator, out_dir=a.out, raw_dir=a.raw, ver=a.ver, only=a.only or None,
+                              workers=a.workers, tries=a.tries, model=model,
+                              mode=a.mode or h.get("image_mode"), resolution=a.resolution,
+                              fetcher=gen.load_fetcher(client), notifier=notifier)
+            finally:
+                if notifier is not None:
+                    notifier.close()
             for n, status in res:
                 print(f"{n:02d} {status}")
             return 1 if any(st not in ("OK", "exists") for _, st in res) else 0

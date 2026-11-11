@@ -175,6 +175,17 @@ class BuildTest(Base):
         self.assertEqual(p, 1)
         self.assertIn("A finished 16:9", (self.dir / "prompts" / "slide-02.md").read_text())
 
+    def test_spec_language_overrides_house(self):
+        prompts.build(self.spec([slide(2)], language="English"), house=HOUSE)
+        text = (self.dir / "prompts" / "slide-02.md").read_text()
+        self.assertIn("slide in English", text)
+        self.assertIn("other than English", text)
+        self.assertNotIn("Indonesian", text)
+
+    def test_house_language_used_without_spec_language(self):
+        prompts.build(self.spec([slide(2)]), house=HOUSE)
+        self.assertIn("slide in Indonesian", (self.dir / "prompts" / "slide-02.md").read_text())
+
     def test_no_preset_anywhere_refused(self):
         with self.assertRaises(ValueError):
             prompts.build(self.spec([slide(2)]), house={"seller": "S"})
@@ -284,3 +295,49 @@ class ParityTest(unittest.TestCase):
         self.assertEqual(len(text_lines), 8)
         for line in text_lines:
             self.assertRegex(line, r'^- [^:"]+: "[^"]+"$')
+
+
+class TextBudgetTest(Base):
+    """2026-10-31: the seller rejected slides whose canvas carried a 22-word headline and
+    25-word points ("kok banyak sekali tulisan.. harus lebih byk ilustrasinya"). The preset's
+    text_budget caps words per headline and per other line; a slide that must be dense (price,
+    comparison table) says why in its 'dense' field. Opt-in: a spec turns the cap into a stop with
+    top-level "strict_budget": true; without it an over-budget line is a warning, so an existing
+    deck still builds."""
+
+    LONG_HEAD = " ".join(["kata"] * 19)
+    LONG_LINE = " ".join(["kata"] * 17)
+
+    def test_long_headline_refused(self):
+        with self.assertRaisesRegex(ValueError, r"slide 2: headline has 19 words \(max 18\)"):
+            self.build([slide(2, text=[["head", self.LONG_HEAD]])], strict=True)
+
+    def test_long_line_refused(self):
+        with self.assertRaisesRegex(ValueError, r'slide 3, role "point 1": 17 words \(max 16\)'):
+            self.build([slide(3, text=[["head", "Pendek"], ["point 1", self.LONG_LINE]])], strict=True)
+
+    def test_within_budget_passes(self):
+        n = self.build([slide(4, text=[["head", " ".join(["kata"] * 18)],
+                                       ["point 1", " ".join(["kata"] * 16)]])])
+        self.assertEqual(n, 1)
+
+    def test_dense_with_reason_skips_budget(self):
+        n = self.build([slide(5, dense="halaman harga", text=[["head", self.LONG_HEAD],
+                                                              ["point 1", self.LONG_LINE]])])
+        self.assertEqual(n, 1)
+
+    def test_dense_without_reason_refused(self):
+        with self.assertRaisesRegex(ValueError, r"slide 6: field 'dense' must be a non-empty reason"):
+            self.build([slide(6, dense="", text=[["head", "Pendek"]])], strict=True)
+
+    def test_default_warns_and_builds(self):
+        import contextlib, io
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            n = self.build([slide(7, text=[["head", self.LONG_HEAD]])], strict=False)
+        self.assertEqual(n, 1)
+        self.assertIn("WARN slide 7: headline has 19 words (max 18)", err.getvalue())
+
+    def build(self, slides, strict=False):
+        top = {"strict_budget": True} if strict else {}
+        return prompts.build(self.spec(slides, **top), house=HOUSE, preset=PRESET_NAME)

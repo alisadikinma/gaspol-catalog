@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -302,3 +303,194 @@ class SilentFailureTest(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NoDuplicateJobTest(Base):
+    """2026-10-31: one deck render made ~94 paid jobs for 13 slides. A wait that ran out
+    came back as an error, gen resubmitted, and a second gen run on the same version
+    resubmitted everything again. A job that has a uuid is collected, never resubmitted."""
+
+    def pending(self, uuid="job-1"):
+        def g(prompt, model, mode, aspect, resolution, output_format, output_dir, refs):
+            self.calls.append(prompt)
+            return f"PENDING (still rendering)\nuuid: {uuid}\nPolling exceeded"
+        return g
+
+    def fetch_ok(self):
+        self.fetched = []
+        def f(uuid, output_format, output_dir):
+            self.fetched.append(uuid)
+            return f"OK\nlocal: {self.src}\nuuid: {uuid}"
+        return f
+
+    def test_pending_is_fetched_not_resubmitted(self):
+        res = gen.run(self.manifest((1,)), self.pending(), fetcher=self.fetch_ok(), model="m", ver="r1", tries=3)
+        self.assertEqual(res, [(1, "OK")])
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.fetched, ["job-1"])
+
+    def test_poll_error_with_uuid_is_not_resubmitted(self):
+        def g(prompt, model, mode, aspect, resolution, output_format, output_dir, refs):
+            self.calls.append(prompt)
+            return "ERROR (poll, uuid=job-9): History API request failed"
+        res = gen.run(self.manifest((1,)), g, fetcher=self.fetch_ok(), model="m", ver="r1", tries=3)
+        self.assertEqual(res, [(1, "OK")])
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.fetched, ["job-9"])
+
+    def test_job_failed_on_server_is_fail_not_pending_and_next_run_resubmits(self):
+        # 2026-11-05: two slides failed on the server ("Image generation failed"); gen kept
+        # reporting PENDING on every rerun, so the deck waited forever on a dead job.
+        mp = self.manifest((1,))
+        gen.run(mp, self.pending("job-5"), model="m", ver="r1", tries=1)
+        self.fetched = []
+        def f(uuid, output_format, output_dir):
+            self.fetched.append(uuid)
+            return f"ERROR (poll, uuid={uuid}): GeminiGen job {uuid} failed: Image generation failed"
+        res = gen.run(mp, self.fake(), fetcher=f, model="m", ver="r1", tries=3)
+        self.assertEqual(self.fetched, ["job-5"])
+        self.assertTrue(res[0][1].startswith("FAIL"), res)
+        self.assertIn("failed on the server", res[0][1])
+        self.assertIn("Image generation failed", res[0][1])
+        self.calls.clear()
+        res = gen.run(mp, self.fake(), fetcher=self.fetch_ok(), model="m", ver="r1")
+        self.assertEqual(res, [(1, "OK")])
+        self.assertEqual(len(self.calls), 1)
+
+    def test_pending_without_fetcher_fails_and_names_uuid(self):
+        res = gen.run(self.manifest((1,)), self.pending("job-2"), model="m", ver="r1", tries=3)
+        self.assertEqual(len(self.calls), 1)
+        self.assertIn("job-2", res[0][1])
+        self.assertTrue(res[0][1].startswith("PENDING"))
+
+    def test_unknown_outcome_is_not_resubmitted(self):
+        def g(prompt, model, mode, aspect, resolution, output_format, output_dir, refs):
+            self.calls.append(prompt)
+            return "ERROR (submit): GeminiGen submit outcome unknown (reset); not resubmitted"
+        res = gen.run(self.manifest((1,)), g, model="m", ver="r1", tries=3)
+        self.assertEqual(len(self.calls), 1)
+        self.assertTrue(res[0][1].startswith("FAIL"))
+
+    def test_next_run_collects_recorded_job_instead_of_submitting(self):
+        mp = self.manifest((1,))
+        gen.run(mp, self.pending("job-3"), model="m", ver="r1", tries=1)
+        self.calls.clear()
+        res = gen.run(mp, self.fake(), fetcher=self.fetch_ok(), model="m", ver="r1")
+        self.assertEqual(res, [(1, "OK")])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.fetched, ["job-3"])
+
+    def test_changed_prompt_ignores_old_job(self):
+        mp = self.manifest((1,))
+        gen.run(mp, self.pending("job-4"), model="m", ver="r1", tries=1)
+        (self.root / "prompts" / "slide-01.md").write_text("PROMPT 1 revised\n", encoding="utf-8")
+        self.calls.clear()
+        res = gen.run(mp, self.fake(), fetcher=self.fetch_ok(), model="m", ver="r1")
+        self.assertEqual(res, [(1, "OK")])
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.fetched, [])
+
+    def test_second_run_on_same_version_is_refused_while_first_runs(self):
+        lock = self.root / "renders" / "r1" / ".gen.lock"
+        lock.parent.mkdir(parents=True)
+        import os
+        lock.write_text(str(os.getpid()), encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "already rendering"):
+            gen.run(self.manifest((1,)), self.fake(), model="m", ver="r1")
+        self.assertEqual(self.calls, [])
+
+    def test_stale_lock_from_dead_process_is_taken_over(self):
+        lock = self.root / "renders" / "r1" / ".gen.lock"
+        lock.parent.mkdir(parents=True)
+        lock.write_text("999999", encoding="utf-8")
+        res = gen.run(self.manifest((1,)), self.fake(), model="m", ver="r1")
+        self.assertEqual(res, [(1, "OK")])
+        self.assertFalse(lock.exists())
+
+
+class WebhookWaitTest(Base):
+    """With a notifier, gen submits without waiting, sleeps until the webhook for that uuid
+    arrives, then collects once. No polling loop, and never a second submit."""
+
+    class Hook:
+        def __init__(self, arrives=True):
+            self.arrives, self.waited = arrives, []
+
+        def wait(self, uuid, timeout):
+            self.waited.append((uuid, timeout))
+            return {"event": "IMAGE_GENERATION_COMPLETED"} if self.arrives else None
+
+    def gen_nowait(self):
+        def g(prompt, model, mode, aspect, resolution, output_format, output_dir, refs,
+              wait=True):
+            self.calls.append(dict(wait=wait))
+            return "PENDING (submitted, not waiting)\nuuid: job-w"
+        return g
+
+    def fetch(self, result="OK"):
+        self.fetched = []
+        def f(uuid, output_format, output_dir):
+            self.fetched.append(uuid)
+            return f"OK\nlocal: {self.src}\nuuid: {uuid}" if result == "OK" else f"PENDING\nuuid: {uuid}"
+        return f
+
+    def test_waits_for_webhook_then_collects(self):
+        hook = self.Hook()
+        res = gen.run(self.manifest((1,)), self.gen_nowait(), fetcher=self.fetch(), notifier=hook,
+                      model="m", ver="r1")
+        self.assertEqual(res, [(1, "OK")])
+        self.assertEqual(self.calls, [dict(wait=False)])
+        self.assertEqual(hook.waited[0][0], "job-w")
+        self.assertEqual(self.fetched, ["job-w"])
+
+    def test_no_webhook_in_time_checks_once_and_never_resubmits(self):
+        hook = self.Hook(arrives=False)
+        res = gen.run(self.manifest((1,)), self.gen_nowait(), fetcher=self.fetch("PENDING"), notifier=hook,
+                      model="m", ver="r1", tries=3)
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(self.fetched, ["job-w"])
+        self.assertTrue(res[0][1].startswith("PENDING"))
+
+    def test_generator_without_webhook_support_keeps_old_path(self):
+        res = gen.run(self.manifest((1,)), self.fake(), notifier=self.Hook(), model="m", ver="r1")
+        self.assertEqual(res, [(1, "OK")])
+
+
+class LoadNotifierTest(unittest.TestCase):
+    """snapgen posts every job of the account to ONE registered URL; one always-on receiver
+    (geminigen-api-client scripts.webhook_events) writes each event to a local file. gen
+    waits on that file. No live receiver -> no notifier, gen polls (2026-11-01: a per-run
+    quick tunnel got no event and gen sat 15 min per slide)."""
+
+    CLIENT = os.environ.get("DECKKIT_TEST_CLIENT", "/Users/alisadikin/Drive-D/claude-plugin/geminigen-api-client")
+
+    def setUp(self):
+        if not Path(self.CLIENT, "scripts", "webhook_events.py").is_file():
+            self.skipTest("image client not installed")
+        self.tmp = Path(tempfile.mkdtemp())
+        self.env = mock.patch.dict(os.environ, {"GEMINIGEN_EVENTS_DIR": str(self.tmp)})
+        self.env.start()
+
+    def tearDown(self):
+        self.env.stop()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_no_live_receiver_means_no_notifier(self):
+        (self.tmp / ".receiver.pid").write_text("999999")
+        self.assertIsNone(gen.load_notifier(self.CLIENT))
+
+    def test_live_receiver_gives_a_waiter_on_event_files(self):
+        (self.tmp / ".receiver.pid").write_text(str(os.getpid()))
+        hook = gen.load_notifier(self.CLIENT)
+        self.assertIsNotNone(hook)
+        job = "83e7f4ec-d571-11f1-ab95-da29abe6cfb9"
+        (self.tmp / f"{job}.json").write_text(json.dumps({"event_name": "IMAGE_GENERATION_COMPLETED"}))
+        self.assertEqual(hook.wait(job, 2)["event_name"], "IMAGE_GENERATION_COMPLETED")
+        self.assertIsNone(hook.wait("00000000-0000-0000-0000-000000000000", 0.2))
+        hook.close()
+
+    def test_waiter_binds_no_port(self):
+        (self.tmp / ".receiver.pid").write_text(str(os.getpid()))
+        hook = gen.load_notifier(self.CLIENT)
+        self.assertFalse(hasattr(hook, "local_url"))
+        hook.close()

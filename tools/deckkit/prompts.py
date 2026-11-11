@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 
 from . import house as house_mod
@@ -125,11 +126,42 @@ def render_prompt(slide, preset, ctx):
     return prompt + f"\n\n{LOG_HEADING}"
 
 
-def _check_spec(slides, preset):
+def _check_budget(slide, preset, strict=False):
+    """Preset 'text_budget' caps words per headline and per other canvas line. Opt-in: only a spec
+    with top-level ``"strict_budget": true`` stops on it; otherwise each excess prints a WARN line,
+    so a deck built before the cap still builds.
+
+    Added 2026-10-31: a deck rendered with 22-word headlines and 25-word points was rejected as
+    text-heavy, small-illustration slides. A slide that must be dense (price, comparison table)
+    sets 'dense' to the reason, and skips the cap."""
+    n = slide.get("n")
+    if "dense" in slide:
+        if not isinstance(slide["dense"], str) or not slide["dense"].strip():
+            raise ValueError(f"slide {n}: field 'dense' must be a non-empty reason")
+        return
+    budget = preset.get("text_budget")
+    if not budget:
+        return
+    head_max, line_max = budget["head_words"], budget["line_words"]
+    for role, value in _text_lines(slide, preset):
+        words = len(value.split())
+        if role.startswith("headline"):
+            msg = f"slide {n}: headline has {words} words (max {head_max})" if words > head_max else None
+        else:
+            msg = f'slide {n}, role "{role}": {words} words (max {line_max})' if words > line_max else None
+        if msg is None:
+            continue
+        if strict:
+            raise ValueError(msg + "; shorten it, or set 'dense' with the reason")
+        print(f"WARN {msg}", file=sys.stderr)
+
+
+def _check_spec(slides, preset, strict_budget=False):
     seen = {}
     footers = {}
     for i, s in enumerate(slides):
         _check_slide(s, i)
+        _check_budget(s, preset, strict_budget)
         n = s["n"]
         if n in seen:
             raise ValueError(f"slide {n}: duplicate n (entries {seen[n] + 1} and {i + 1})")
@@ -191,9 +223,10 @@ def build(spec_path, house=None, preset=None, out_dir=None, only=None, house_pat
     if not name:
         raise ValueError("no preset: pass --preset or set 'preset' in the house standard")
     pre = house_mod.load_preset(name)
-    ctx = {"seller": house["seller"], "language": house.get("language", house_mod.DEFAULT_LANGUAGE),
+    ctx = {"seller": house["seller"],
+           "language": spec.get("language") or house.get("language", house_mod.DEFAULT_LANGUAGE),
            "audience": spec.get("audience", "")}
-    _check_spec(slides, pre)
+    _check_spec(slides, pre, strict_budget=spec.get("strict_budget") is True)
     if only:
         missing = [n for n in only if n not in {s["n"] for s in slides}]
         if missing:

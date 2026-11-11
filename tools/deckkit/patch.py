@@ -18,6 +18,29 @@ def _font(font_path, size):
     return ImageFont.truetype(font_path, size)
 
 
+def missing_glyphs(font_path, text, font_index=0):
+    """Characters of ``text`` (spaces excluded) that the font has no glyph for. Pillow draws
+    those as a hollow box without any warning, so a patch would ship a box instead of an arrow."""
+    from fontTools.ttLib import TTCollection, TTFont
+    if str(font_path).lower().endswith((".ttc", ".otc")):
+        tt = TTCollection(font_path).fonts[font_index]
+    else:
+        tt = TTFont(font_path, fontNumber=font_index)
+    cmap = tt.getBestCmap() or {}
+    seen = []
+    for ch in text:
+        if not ch.isspace() and ord(ch) not in cmap and ch not in seen:
+            seen.append(ch)
+    return seen
+
+
+def _check_glyphs(font_path, texts, font_index=0):
+    miss = missing_glyphs(font_path, "".join(texts), font_index)
+    if miss:
+        names = ", ".join(f"U+{ord(c):04X}" for c in miss)
+        raise ValueError(f"font has no glyph for {names}: pick a font that has it ({font_path})")
+
+
 def ink_bbox(img, box, dark=True, thr=150):
     """Bounding box (x0, y0, x1, y1) of dark (or light) ink inside ``box``, or None."""
     a = np.asarray(img.convert("RGB")).astype(int)
@@ -173,12 +196,81 @@ def lerp_fill(img, box, margin=3):
     return img
 
 
-def erase_between(img, box, bg=None):
+def flat_fill(img, box, bg_x=None):
+    """Erase ``box`` with the background colour of one sample column, row by row, no blending.
+    ``bg_x`` is the column to sample (default: the first column right of the box, or the one left
+    of it at the right image edge). Pick a column that holds background only. Unlike
+    :func:`lerp_fill`, letters touching the box cannot bleed their colour in. Mutates and returns
+    ``img``; ValueError when ``bg_x`` is outside the image."""
+    x0, y0, x1, y1 = box
+    a = np.asarray(img.convert("RGB")).copy()
+    w = a.shape[1]
+    if bg_x is None:
+        bg_x = x1 if x1 < w else x0 - 1
+    if not 0 <= bg_x < w:
+        raise ValueError(f"bg_x {bg_x} is outside the image (width {w})")
+    a[y0:y1, x0:x1] = a[y0:y1, bg_x:bg_x + 1]
+    img.paste(Image.fromarray(a), (0, 0))
+    return img
+
+
+def erase_between(img, box, bg=None, bg_from=None):
     """Erase ``box``: ``bg`` None blends the ground on either side (:func:`lerp_fill`); an RGB
-    tuple paints it flat. Mutates and returns ``img``."""
+    tuple paints it flat; ``bg_from`` (a sample column x) paints each row with that column's
+    colour (:func:`flat_fill`), for a box that touches letters. Mutates and returns ``img``."""
+    if bg_from is not None:
+        return flat_fill(img, box, bg_x=bg_from)
     if bg is None:
         return lerp_fill(img, box)
     ImageDraw.Draw(img).rectangle((box[0], box[1], box[2] - 1, box[3] - 1), fill=tuple(bg))
+    return img
+
+
+def line_words(img, y0, y1, x0, x1, thr=110, gap=12, dark=True):
+    """x ranges ``(xa, xb)`` (inclusive) of the words in the text band ``y0:y1`` between ``x0`` and
+    ``x1``. A column belongs to ink when some pixel is darker than ``thr`` (``dark=False``:
+    brighter); ink columns split into words where the blank run is longer than ``gap``. Keep the
+    band on the x-height so descenders of the line above or below do not join words."""
+    a = np.asarray(img.convert("RGB")).astype(int)[y0:y1, x0:x1].mean(axis=2)
+    cols = np.nonzero((a < thr if dark else a > thr).any(axis=0))[0]
+    words = []
+    for c in cols:
+        c = int(c) + x0
+        if words and c - words[-1][1] - 1 <= gap:
+            words[-1][1] = c
+        else:
+            words.append([c, c])
+    return [(s, e) for s, e in words]
+
+
+def move_ink(img, src_box, dst_xy, clear=True, ink_sum=None, dark=True, bg_x=None):
+    """Move the ink of ``src_box`` so its top-left corner lands on ``dst_xy``: only ink pixels are
+    copied (r+g+b below ``ink_sum``, default 600; ``dark=False`` copies pixels above ``765 -
+    ink_sum`` for light ink on a dark ground), so neighbouring tails and the new ground stay.
+    With ``clear`` the source box is first painted with the per-row background of column ``bg_x``
+    (default: first column right of the box; :func:`flat_fill`), never a box that overwrites
+    the tails of the lines above or below. ``clear=False`` copies. Reuses the real render ink, so
+    no stand-in font is needed. Mutates and returns ``img``; ValueError when the box has no ink
+    or the target leaves the image."""
+    x0, y0, x1, y1 = src_box
+    ink_sum = 600 if ink_sum is None else ink_sum
+    a = np.asarray(img.convert("RGB")).copy()
+    h, w = a.shape[:2]
+    tx, ty = int(dst_xy[0]), int(dst_xy[1])
+    if tx < 0 or ty < 0 or tx + (x1 - x0) > w or ty + (y1 - y0) > h:
+        raise ValueError(f"target {dst_xy} puts the box outside the image")
+    sub = a[y0:y1, x0:x1].copy()
+    s = sub.astype(int).sum(axis=2)
+    mask = s < ink_sum if dark else s > 765 - ink_sum
+    if not mask.any():
+        raise ValueError("no ink in source box")
+    if clear:
+        out = Image.fromarray(a)
+        flat_fill(out, src_box, bg_x=bg_x)
+        a = np.asarray(out).copy()
+    region = a[ty:ty + (y1 - y0), tx:tx + (x1 - x0)]
+    region[mask] = sub[mask]
+    img.paste(Image.fromarray(a), (0, 0))
     return img
 
 
@@ -238,6 +330,7 @@ def replace_line(img, box, text, font_path=None, fill=None, align="left", squeez
     if align not in ("left", "right", "center"):
         raise ValueError("align must be left, right or center")
     path = fonts.find_font(font_path)
+    _check_glyphs(path, [text])
     ink = tuple(fill[:3]) if fill is not None else _ink_colour(img, bbox, dark=dark)
     size = size_for_cap(path, bbox[3] - bbox[1] + 1)
     font = _font(path, size)
@@ -266,3 +359,256 @@ def replace_line(img, box, text, font_path=None, fill=None, align="left", squeez
     top = baseline_for_top(path, size, bbox[1]) - base
     out.paste(layer, (int(x), int(top)), layer)
     return out
+
+
+def replace_block(img, box, lines, font_path=None, fill=None, dark=True, width=None, leading=1.3,
+                  max_size=40, min_size=10, font_index=0, bg=None, thr=150,
+                  cap_from_ink=False, align="left", stretch_to_ink=False, bg_from=None):
+    """Swap a paragraph of several lines inside ``box`` and return a new image (``img`` is not
+    changed). Use it when the new text has a different number of lines than the old one, which
+    :func:`replace_line` cannot do.
+
+    The old ink is measured (``dark=False`` for light ink on a dark ground), the box is erased
+    (:func:`erase_between`; ``bg`` RGB paints it flat, None blends the ground), and ``lines`` are set
+    left-aligned from the old ink's top-left corner in the largest size from ``max_size`` down that
+    keeps every line within ``width`` (default: box width minus the old ink's left offset).
+    ``leading`` is line pitch as a multiple of the size. ``fill`` None samples the old ink colour
+    (darkest pixel, or lightest with ``dark=False``). ``font_index`` picks a face in a .ttc.
+    ``thr`` is the ink threshold of :func:`ink_bbox`; lower it for mid-tone light ink (gold on navy).
+    ``cap_from_ink=True`` sets the size from the old ink height (for a box holding only capitals or
+    digits, e.g. one number inside a headline) instead of the largest size that fits ``width``.
+    Lines are placed so the top of the capitals sits on the old ink top. ``align`` ("left",
+    "center", "right") places each line against the old ink's left edge, centre or right edge;
+    "center" keeps even gaps when a narrower font replaces a word inside a sentence.
+    ``bg_from`` (a sample column x) erases flat per row from that column instead of blending
+    (:func:`flat_fill`); use it when the box touches letters.
+    ``stretch_to_ink=True`` (one line only) scales the new line horizontally to the old ink width,
+    so a number swapped inside a sentence in a narrower stand-in font leaves no gap (or a slightly
+    longer word fits); ``width`` is then not checked.
+    Raises ValueError when the box has no ink, when even ``min_size`` is too wide, or when the
+    lines run past the bottom of ``box``."""
+    if align not in ("left", "center", "right"):
+        raise ValueError("align must be left, center or right")
+    if stretch_to_ink and len(lines) != 1:
+        raise ValueError("stretch_to_ink needs exactly one line")
+    bbox = ink_bbox(img, box, dark=dark, thr=thr)
+    if bbox is None:
+        raise ValueError("no ink in box")
+    if not lines:
+        raise ValueError("no lines")
+    path = fonts.find_font(font_path)
+    _check_glyphs(path, lines, font_index)
+    out = img.convert("RGB").copy()
+    a = np.asarray(out)[bbox[1]:bbox[3] + 1, bbox[0]:bbox[2] + 1].reshape(-1, 3).astype(int)
+    ink = tuple(fill[:3]) if fill is not None else tuple(
+        int(v) for v in (a[a.sum(1).argmin()] if dark else a[a.sum(1).argmax()]))
+    avail = width if width is not None else box[2] - bbox[0]
+    d = ImageDraw.Draw(out)
+    font = None
+    if cap_from_ink:
+        size = size_for_cap(path, bbox[3] - bbox[1] + 1)
+        f = ImageFont.truetype(path, size, index=font_index)
+        if not stretch_to_ink and max(d.textlength(t, font=f) for t in lines) > avail:
+            raise ValueError(f"text wider than {avail}px at the old ink height (size {size})")
+        font = f
+    else:
+        for size in range(max_size, min_size - 1, -1):
+            f = ImageFont.truetype(path, size, index=font_index)
+            if max(d.textlength(t, font=f) for t in lines) <= avail:
+                font = f
+                break
+    if font is None:
+        raise ValueError(f"text wider than {avail}px even at size {min_size}")
+    pitch = int(round(size * leading))
+    base = baseline_for_top(path, size, bbox[1])
+    if max(d.textbbox((bbox[0], base + i * pitch), t, font=font, anchor="ls")[3]
+           for i, t in enumerate(lines)) > box[3]:
+        raise ValueError("lines run past the bottom of box")
+    erase_between(out, box, bg=bg, bg_from=bg_from)
+    if stretch_to_ink:
+        x0, y0, x1, y1 = d.textbbox((0, base), lines[0], font=font, anchor="ls")
+        layer = Image.new("RGBA", (x1 - x0 + 2, y1 - y0 + 2), (0, 0, 0, 0))
+        ImageDraw.Draw(layer).text((1 - x0, base - y0 + 1), lines[0], font=font, fill=ink + (255,), anchor="ls")
+        layer = layer.crop(layer.getbbox())
+        layer = layer.resize((bbox[2] - bbox[0] + 1, layer.height), Image.LANCZOS)
+        out.paste(layer, (bbox[0], y0 + (layer.getbbox()[1] if layer.getbbox() else 0)), layer)
+        return out
+    for i, t in enumerate(lines):
+        w = d.textlength(t, font=font)
+        x = {"left": bbox[0], "center": (bbox[0] + bbox[2] + 1 - w) / 2, "right": bbox[2] + 1 - w}[align]
+        d.text((x, base + i * pitch), t, font=font, fill=ink, anchor="ls")
+    return out
+
+
+ADD_KEYS = {"size", "fill", "leading", "align"}
+
+
+def add_block(img, box, lines, font_path, size, fill, leading=1.3, align="left"):
+    """Write ``lines`` into an empty ``box`` (no old ink to measure): cap top of the first line at
+    the box top, ``size`` px, ``fill`` RGB, line pitch ``leading`` x size. Raises ValueError when a
+    line is wider than the box or the block runs past its bottom. Returns a new image.
+    (2026-11-01: a missing sentence had to go into blank space on a rendered slide.)"""
+    if align not in ("left", "center", "right"):
+        raise ValueError("align must be left, center or right")
+    out = img.convert("RGB").copy()
+    d = ImageDraw.Draw(out)
+    font = _font(font_path, size)
+    x0, y0, x1, y1 = box
+    cap = font.getbbox("H")
+    top_off = cap[1]
+    pitch = size * leading
+    for i, t in enumerate(lines):
+        w = d.textlength(t, font=font)
+        if w > x1 - x0:
+            raise ValueError(f"line {t!r} is {w:.0f} px wide, box is {x1 - x0}")
+        y = y0 - top_off + i * pitch
+        if y + font.getbbox(t)[3] > y1:
+            raise ValueError(f"lines run past the bottom of box at line {i + 1}")
+        x = {"left": x0, "center": (x0 + x1 - w) / 2, "right": x1 - w}[align]
+        d.text((x, y), t, font=font, fill=tuple(fill))
+    return out
+
+
+RETYPE_KEYS = {"dark", "width", "leading", "max_size", "min_size", "font_index", "fill", "bg", "thr",
+               "cap_from_ink", "align", "stretch_to_ink", "bg_from"}
+
+
+def retype(spec, base_dir="."):
+    """Apply a list of paragraph fixes from a spec dict (the ``deckkit retype`` file) and return
+    the written paths. Spec: ``{"font": path, "fixes": [{"src", "dst", "box": [x0, y0, x1, y1],
+    "lines": [...], "note": "why", ...replace_block options}]}``; ``font`` may also be set per fix.
+    Paths are relative to ``base_dir``. Every fix is checked before anything is written, so a
+    bad fix (unknown key, missing file, box without ink, text that does not fit) writes nothing.
+    A fix whose ``src`` is an earlier fix's ``dst`` works on that earlier result, so several fixes
+    on one page chain in order. A fix with ``"erase": true`` and no ``lines`` only wipes ``box``
+    (a stray wordmark or mark the model drew), blending the ground or painting ``bg``. A fix
+    with ``"add": {"size", "fill", "leading"?, "align"?}`` writes ``lines`` into a box that has
+    no old ink (:func:`add_block`)."""
+    import os
+    fixes = spec.get("fixes")
+    if not fixes:
+        raise ValueError("spec has no fixes")
+    done = {}
+    for i, f in enumerate(fixes):
+        need = {"src", "dst", "box"} if f.get("erase") else {"src", "dst", "box", "lines"}
+        missing = need - f.keys()
+        if missing:
+            raise ValueError(f"fix {i}: missing {sorted(missing)}")
+        extra = f.keys() - RETYPE_KEYS - {"src", "dst", "box", "lines", "font", "note", "erase", "add"}
+        if extra:
+            raise ValueError(f"fix {i}: unknown keys {sorted(extra)}")
+        font = f.get("font", spec.get("font"))
+        src = os.path.abspath(os.path.join(base_dir, f["src"]))
+        if src not in done and not os.path.exists(src):
+            raise FileNotFoundError(f"fix {i}: {src}")
+        opts = {k: (tuple(v) if k in ("fill", "bg") else v) for k, v in f.items() if k in RETYPE_KEYS}
+        base = done.get(src) or Image.open(src)
+        if f.get("erase") not in (None, False, True, "flat"):
+            raise ValueError(f"fix {i}: erase must be true or \"flat\", got {f['erase']!r}")
+        if f.get("erase"):
+            if f.get("lines"):
+                raise ValueError(f"fix {i}: erase takes no lines")
+            img = base.convert("RGB").copy()
+            if f["erase"] == "flat" and opts.get("bg") is None and opts.get("bg_from") is None:
+                flat_fill(img, tuple(f["box"]))
+            else:
+                erase_between(img, tuple(f["box"]), bg=opts.get("bg"), bg_from=opts.get("bg_from"))
+            done[os.path.abspath(os.path.join(base_dir, f["dst"]))] = img
+            continue
+        if "add" in f:
+            add = f["add"]
+            if not isinstance(add, dict) or "size" not in add or "fill" not in add:
+                raise ValueError(f"fix {i}: add needs size and fill")
+            bad = add.keys() - ADD_KEYS
+            if bad:
+                raise ValueError(f"fix {i}: add has unknown keys {sorted(bad)}")
+            try:
+                img = add_block(base, tuple(f["box"]), f["lines"], font, **add)
+            except ValueError as e:
+                raise ValueError(f"fix {i} ({f['dst']}): {e}") from None
+            done[os.path.abspath(os.path.join(base_dir, f["dst"]))] = img
+            continue
+        try:
+            img = replace_block(base, tuple(f["box"]), f["lines"], font, **opts)
+        except ValueError as e:
+            raise ValueError(f"fix {i} ({f['dst']}): {e}") from None
+        done[os.path.abspath(os.path.join(base_dir, f["dst"]))] = img
+    for path, img in done.items():
+        img.save(path)
+    return list(done)
+
+
+REFLOW_OPS = {"words", "move", "clear"}
+
+
+def _reflow_check(i, j, op):
+    where = f"fix {i} op {j}"
+    kind = op.get("op")
+    if kind not in REFLOW_OPS:
+        raise ValueError(f"{where}: op must be one of {sorted(REFLOW_OPS)}, got {kind!r}")
+    if kind == "words":
+        need = {"line"}
+    elif kind == "clear":
+        need = {"box"}
+    else:
+        need = {"to"} | ({"line", "word"} if "box" not in op else {"box"})
+    missing = need - op.keys()
+    if missing:
+        raise ValueError(f"{where}: missing {sorted(missing)}")
+
+
+def reflow(spec, base_dir="."):
+    """Move or remove words of rendered text from a spec dict (the ``deckkit reflow`` file) and
+    return ``(written paths, words report)``. Spec: ``{"fixes": [{"src", "dst", "ops": [...]}]}``;
+    paths are relative to ``base_dir``. Ops run in order on the current image:
+
+    * ``{"op": "words", "line": [y0, y1, x0, x1], "thr", "gap", "dark"}`` lists the word x ranges
+      (:func:`line_words`); the report holds one ``[[xa, xb], ...]`` per ``words`` op.
+    * ``{"op": "move", "to": [x, y], "box": [x0, y0, x1, y1]}`` or ``{"line": [...], "word": N}``
+      (N counts from 0; the box is then the word's columns over the line's rows, one pixel
+      wider) moves the ink there (:func:`move_ink`; options ``clear``, ``ink_sum``, ``dark``,
+      ``bg_x``). ``to`` is the top-left corner of the box.
+    * ``{"op": "clear", "box": [...], "bg_x": N}`` wipes a box flat (:func:`flat_fill`).
+
+    Every fix is run on a copy before anything is saved, so a bad op (unknown op, missing key,
+    word index out of range, no ink) writes nothing. A fix whose ``src`` is an earlier ``dst``
+    works on that result."""
+    import os
+    fixes = spec.get("fixes")
+    if not fixes:
+        raise ValueError("spec has no fixes")
+    done, report = {}, []
+    for i, f in enumerate(fixes):
+        missing = {"src", "dst", "ops"} - f.keys()
+        if missing:
+            raise ValueError(f"fix {i}: missing {sorted(missing)}")
+        src = os.path.abspath(os.path.join(base_dir, f["src"]))
+        if src not in done and not os.path.exists(src):
+            raise FileNotFoundError(f"fix {i}: {src}")
+        img = (done.get(src) or Image.open(src)).convert("RGB").copy()
+        for j, op in enumerate(f["ops"]):
+            _reflow_check(i, j, op)
+            try:
+                if op["op"] == "words":
+                    y0, y1, x0, x1 = op["line"]
+                    report.append([list(w) for w in line_words(
+                        img, y0, y1, x0, x1, **{k: op[k] for k in ("thr", "gap", "dark") if k in op})])
+                elif op["op"] == "clear":
+                    flat_fill(img, tuple(op["box"]), bg_x=op.get("bg_x"))
+                else:
+                    if "box" in op:
+                        box = tuple(op["box"])
+                    else:
+                        y0, y1, x0, x1 = op["line"]
+                        ws = line_words(img, y0, y1, x0, x1, **{k: op[k] for k in ("thr", "gap", "dark") if k in op})
+                        if not 0 <= op["word"] < len(ws):
+                            raise ValueError(f"word {op['word']} not in line ({len(ws)} words)")
+                        box = (ws[op["word"]][0], y0, ws[op["word"]][1] + 1, y1)
+                    move_ink(img, box, tuple(op["to"]),
+                             **{k: op[k] for k in ("clear", "ink_sum", "dark", "bg_x") if k in op})
+            except ValueError as e:
+                raise ValueError(f"fix {i} op {j} ({f['dst']}): {e}") from None
+        done[os.path.abspath(os.path.join(base_dir, f["dst"]))] = img
+    for path, img in done.items():
+        img.save(path)
+    return list(done), report
