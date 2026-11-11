@@ -214,6 +214,10 @@ def main(argv=None):
     s.add_argument("out")
     s.add_argument("--size", default="2752x1536", help="WxH of the PNG (default 2752x1536)")
 
+    s = sub.add_parser("jdpage", help="JD data JSON -> one-page A4 'How I would build your system' PDF")
+    s.add_argument("data", help="JSON: title, problem, flow, phases, risks, proof, cta, brand")
+    s.add_argument("out", help="output PDF")
+
     s = sub.add_parser("prompts", help="slide spec -> prompt files + manifest")
     s.add_argument("spec")
     s.add_argument("--house", help="house standard file (else $GASPOL_CATALOG_HOUSE or .gaspol/context-sources.md)")
@@ -253,6 +257,25 @@ def main(argv=None):
         except FileNotFoundError as exc:
             print(f"FAIL: {exc}", file=sys.stderr)
             return 1
+    if a.cmd == "jdpage":
+        import json
+        from . import jdpage
+        try:
+            with open(a.data, encoding="utf-8") as fh:
+                data = json.load(fh)
+            jdpage.validate(data)
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"data: not valid json: {exc}", file=sys.stderr)
+            return 2
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        try:
+            print(jdpage.render(data, a.out))
+        except (FileNotFoundError, RuntimeError) as exc:
+            print(f"FAIL: {exc}", file=sys.stderr)
+            return 1
+        return 0
     try:
         if a.cmd == "repage":
             from . import repage

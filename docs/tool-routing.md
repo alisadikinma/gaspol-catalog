@@ -43,6 +43,7 @@ and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` need
 | Move or delete a word in a rendered title (doubled word, stray dot) by reusing the real ink, no stand-in font | `deckkit reflow plan.json` (`{"fixes":[{"src","dst","ops":[{"op":"words","line":[y0,y1,x0,x1]},{"op":"move","line":[...],"word":2,"to":[x,y]},{"op":"clear","box":[...]}]}]}`; `words` prints the x range of each word first). Library: `patch.line_words`, `patch.move_ink` (`dark=False` for light ink) | `patch` |
 | Fix a few words in a rendered page without re-rendering | `tools/deckkit/patch.py`: `ink_bbox`, `fit`, `render_text`, `paste_text`, `blend_fill`, `glow_text`, `emblem_text` (round glowing-lettering emblem, optional ring), `fill_from_side` (repeat the edge line beside a box across it), `replace_block` (swap a paragraph with a different number of lines; light-on-dark with `dark=False`), `replace_line` (swap one line at the old cap height and ink colour; `squeeze` for tight boxes), `lerp_fill`, `erase_between`, `size_for_cap`, `baseline_for_top` | `patch` |
 | HTML page -> PNG at an exact size (headless Chrome) | `deckkit shot page.html out.png --size 2752x1536` | `chrome` |
+| JD data -> one-page "How I'd build your system" PDF | `deckkit jdpage data.json out.pdf` | `jdpage` |
 | Small pill label or flag drawn in code (no image model) | `tools/deckkit/chips.py`: `pill`, `flag` | `chips` |
 
 Rule of thumb: patch, do not re-roll. Re-rendering a page re-rolls every approved string on it.

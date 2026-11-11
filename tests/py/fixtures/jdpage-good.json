@@ -1,0 +1,19 @@
+{
+  "title": "A pick-and-pack dashboard that shows late orders before the customer asks",
+  "problem": "Orders ship from three spreadsheets, so a late parcel is found only when the customer writes in. The team needs one live view of what is stuck and why, without replacing the tools they already use.",
+  "flow": ["Read orders from the shop", "Match each order to its pick list", "Flag orders older than the promise", "Show the queue on one screen", "Send the daily summary"],
+  "phases": [
+    {"name": "Map", "deliverable": "Order flow diagram and the list of late-order rules", "days": 3},
+    {"name": "Build", "deliverable": "Working dashboard on sample data", "days": 7},
+    {"name": "Hand over", "deliverable": "Live dashboard, short guide, one week of support", "days": "4"}
+  ],
+  "risks": [
+    {"risk": "Order export format changes", "mitigation": "Read through one adapter with a schema check"},
+    {"risk": "Late rules differ per customer", "mitigation": "Keep the rules in one editable table"}
+  ],
+  "proof": [
+    {"label": "Dashboards shipped", "number": "12", "source": "claims bank"}
+  ],
+  "cta": "Reply to this proposal and I will start the Map phase the same day.",
+  "brand": {"name": "Example Studio", "color": "#1F6F5C"}
+}
