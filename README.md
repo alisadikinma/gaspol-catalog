@@ -38,7 +38,7 @@ next one:
 Requires `gaspol-pitch` for the review engine, plus 19 sales and strategy skills.
 Run `bash tests/deps-present.sh` to check.
 
-Version 0.11.2.
+Version 0.12.0.
 
 See `CLAUDE.md` for the rules and `references/b2b/` for the brain.
 
@@ -55,6 +55,7 @@ The [gaspol-one](https://github.com/alisadikinma/gaspol-one) marketplace also ca
 
 ## Changelog
 
+- 0.12.0 — `deckkit jobdeck`: fill the `data-job` slots of an HTML deck (cover/CTA text, `*x*` emphasis, escaped) and render every slide to one PDF with headless Chrome
 - 0.11.2 — rail 14: no sentence in a deck talks down the seller's ability; catalog-gate blocks it as a fourth anti-pattern
 - 0.11.1 — `deckkit jdpage` renders a one-page A4 PDF from a job-description page JSON (used by gaspol-upwork)
 - 0.11.0 — `deckkit vidkit` runs gaspol-video's photo tools (paste, erase, retint, inpaint) without a copy
