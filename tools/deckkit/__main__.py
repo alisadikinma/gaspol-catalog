@@ -218,6 +218,11 @@ def main(argv=None):
     s.add_argument("data", help="JSON: title, problem, flow, phases, risks, proof, cta, brand")
     s.add_argument("out", help="output PDF")
 
+    s = sub.add_parser("jobdeck", help="HTML deck + slots JSON -> PDF with the cover/CTA text swapped")
+    s.add_argument("deck", help="deck HTML with data-job slots and div.slide[id] slides")
+    s.add_argument("slots", help='JSON {"<slot>": "text, *word* = emphasis"}')
+    s.add_argument("out", help="output PDF")
+
     s = sub.add_parser("prompts", help="slide spec -> prompt files + manifest")
     s.add_argument("spec")
     s.add_argument("--house", help="house standard file (else $GASPOL_CATALOG_HOUSE or .gaspol/context-sources.md)")
@@ -275,6 +280,27 @@ def main(argv=None):
         except (FileNotFoundError, RuntimeError) as exc:
             print(f"FAIL: {exc}", file=sys.stderr)
             return 1
+        return 0
+    if a.cmd == "jobdeck":
+        import json
+        from . import jobdeck
+        try:
+            with open(a.slots, encoding="utf-8") as fh:
+                slots = json.load(fh)
+            if not isinstance(slots, dict):
+                raise ValueError("slots: must be a JSON object")
+            if not os.path.isfile(a.deck):
+                raise ValueError(f"deck: file not found: {a.deck}")
+            print(jobdeck.render(a.deck, slots, a.out))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"input: {exc}", file=sys.stderr)
+            return 2
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        except RuntimeError as exc:
+            print(f"FAIL: {exc}", file=sys.stderr)
+            return 3
         return 0
     try:
         if a.cmd == "repage":

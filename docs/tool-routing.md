@@ -44,6 +44,7 @@ and OpenCV (`~/.gaspol-video/venv/bin/python -m tools.deckkit ...`). `pptx` need
 | Fix a few words in a rendered page without re-rendering | `tools/deckkit/patch.py`: `ink_bbox`, `fit`, `render_text`, `paste_text`, `blend_fill`, `glow_text`, `emblem_text` (round glowing-lettering emblem, optional ring), `fill_from_side` (repeat the edge line beside a box across it), `replace_block` (swap a paragraph with a different number of lines; light-on-dark with `dark=False`), `replace_line` (swap one line at the old cap height and ink colour; `squeeze` for tight boxes), `lerp_fill`, `erase_between`, `size_for_cap`, `baseline_for_top` | `patch` |
 | HTML page -> PNG at an exact size (headless Chrome) | `deckkit shot page.html out.png --size 2752x1536` | `chrome` |
 | JD data -> one-page "How I'd build your system" PDF | `deckkit jdpage data.json out.pdf` | `jdpage` |
+| Area deck -> job deck PDF (cover + CTA text swapped, other slides untouched) | `deckkit jobdeck DECK.html SLOTS.json OUT.pdf` | `jobdeck` |
 | Small pill label or flag drawn in code (no image model) | `tools/deckkit/chips.py`: `pill`, `flag` | `chips` |
 
 Rule of thumb: patch, do not re-roll. Re-rendering a page re-rolls every approved string on it.

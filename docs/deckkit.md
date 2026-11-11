@@ -92,3 +92,16 @@ is rejected with `field: no links on the JD page`. Every string is HTML-escaped.
 
 Exactly 3 phases (`days` is a number or a short string), 2 to 4 risks, 1 to 3 proof items.
 `proof.number` must come from the seller's own verified claims: the tool cannot check that.
+
+## jobdeck — area deck to job deck PDF
+
+`deckkit jobdeck DECK.html SLOTS.json OUT.pdf` swaps the text of marked elements in an HTML deck and
+prints every slide (`div.slide[id]`) as one 1920x1080 PDF page through headless Chrome. The deck
+marks swappable text with `data-job="<slot>"`; `data-job-max="<n>"` caps visible characters
+(default 120; `*word*` markers do not count). Slots: `cover-eye`, `cover-head`, `cover-sub`,
+`cta-eye`, `cta-head`, `cta-tile-1-title`..`cta-tile-4-title`, `cta-tile-1-text`..`cta-tile-4-text`,
+`cta-sub`. SLOTS.json is `{"<slot>": "plain text, *word* = <em>"}`. Everything outside the slots
+stays byte-identical. Refused (exit 2, message starts with the slot name): unknown slot, slot not
+in the deck, over the max, `<` or `>` in the text, a slot nested in another slot. Chrome failure
+exits 3. Temporary pages (`_jobdeck_<pid>_<n>.html`) live in the deck folder so relative images
+resolve, and are deleted afterwards. Library: `jobdeck.fill`, `jobdeck.slide_ids`, `jobdeck.render`.
