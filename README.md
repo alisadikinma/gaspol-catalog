@@ -38,7 +38,7 @@ next one:
 Requires `gaspol-pitch` for the review engine, plus 19 sales and strategy skills.
 Run `bash tests/deps-present.sh` to check.
 
-Version 0.11.0.
+Version 0.11.1.
 
 See `CLAUDE.md` for the rules and `references/b2b/` for the brain.
 
@@ -55,6 +55,7 @@ The [gaspol-one](https://github.com/alisadikinma/gaspol-one) marketplace also ca
 
 ## Changelog
 
+- 0.11.1 — `deckkit jdpage` renders a one-page A4 PDF from a job-description page JSON (used by gaspol-upwork)
 - 0.11.0 — `deckkit vidkit` runs gaspol-video's photo tools (paste, erase, retint, inpaint) without a copy
 - 0.10.0 — deckkit compose, letterhead, lockup, repage, sign; opt-in text budget (`strict_budget`); PDF refuses a page of another aspect instead of stretching it
 - 0.9.1 — refgate blocks renders of real places without a photo

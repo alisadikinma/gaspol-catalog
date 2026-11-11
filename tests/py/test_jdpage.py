@@ -171,7 +171,10 @@ class RenderTest(unittest.TestCase):
             out = Path(td) / "jd.pdf"
             self.assertEqual(jdpage.render(good(), out), str(out))
             self.assertEqual(pdf_pages(out), 1)
-            import pymupdf as fitz
+            try:
+                import pymupdf as fitz
+            except ImportError:
+                self.skipTest("needs pymupdf (use the gaspol-video venv python)")
             with fitz.open(out) as doc:
                 r = doc[0].rect
                 self.assertAlmostEqual(r.width, 595, delta=3)
